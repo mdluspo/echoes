@@ -1,0 +1,54 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="description" content="A hand-drawn hamster adventure. Scurry, jump, and leave a little echo of yourself.">
+  <title>Echoes — A Little Hamster Adventure</title>
+  <link rel="stylesheet" href="/src/theme-type.css">
+  <link rel="stylesheet" href="/src/style.css">
+</head>
+<body>
+  <main class="game" aria-label="Echoes, a hand-drawn hamster platform adventure">
+    <canvas id="game" tabindex="0" role="application" aria-label="Hamster platform adventure. Left and Right to run, Space to jump, E to leave an Echo, R to retry."></canvas>
+    <header class="hud">
+      <div class="identity"><span class="wordmark">echoes</span><span class="ink-divider" aria-hidden="true"></span><h1 id="room-name">The Meadow Path</h1></div>
+      <nav aria-label="Game tools"><button id="help-button" class="icon-button" title="How to play" aria-label="How to play">?</button><button id="menu-button" class="icon-button" title="Pause" aria-label="Pause game"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6v12M15 6v12"/></svg></button></nav>
+    </header>
+    <p id="cue" class="cue" role="status" aria-live="polite">← → to scurry · Space to jump</p>
+    <div class="echo-control"><div class="memory-meter" aria-label="Recording, last eight seconds"><small id="memory-label">0 / 8s</small><i><b id="memory-fill"></b></i></div><button id="echo-button" class="echo-button" title="Clone your last eight seconds (E)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8a3 3 0 1 1 4-4m4 0a3 3 0 1 1 4 4M5 12c0-5 14-5 14 0v5c0 5-14 5-14 0Z"/><path d="M9 14v1m6-1v1"/></svg><span>Echo last 8s</span><kbd>E</kbd></button></div>
+    <div class="touch-controls" aria-label="Touch controls">
+      <div class="touch-walk" role="group" aria-label="Run"><button data-hold="left" aria-label="Run left">←</button><button data-hold="right" aria-label="Run right">→</button></div>
+      <button id="jump-button" class="jump-button" aria-label="Jump">↑</button>
+    </div>
+  </main>
+  <dialog id="menu-dialog" class="paper-dialog" aria-labelledby="menu-title">
+    <button class="dialog-close" data-close="menu-dialog" aria-label="Close menu">×</button>
+    <span class="eyebrow">A MOMENT BETWEEN PANELS</span><h2 id="menu-title">Paused.</h2>
+    <button class="primary-button" data-close="menu-dialog">Back to the story <span>→</span></button>
+    <button id="retry-button" class="menu-button">Retry this take <kbd>R</kbd></button>
+    <button id="remove-echo-button" class="menu-button" hidden>Remove last Echo <span>↶</span></button>
+    <button id="reset-button" class="menu-button">Restart section <span>↻</span></button>
+    <button id="sound-button" class="menu-button" aria-pressed="false">Sound <span>off</span></button>
+    <button id="motion-button" class="menu-button" aria-pressed="true">Idle & scenery animation <span>on</span></button>
+    <button id="trail-button" class="menu-button" aria-pressed="false">Echo trails <span>off</span></button>
+    <div class="room-picker" role="group" aria-label="Choose a trail" id="room-picker"></div>
+  </dialog>
+  <dialog id="help-dialog" class="paper-dialog" aria-labelledby="help-title">
+    <button class="dialog-close" data-close="help-dialog" aria-label="Close help">×</button>
+    <span class="eyebrow">A LITTLE HELP</span><h2 id="help-title">Small paws. Strange places.</h2>
+    <p class="help-copy">Wander the meadow and hop across the creek. Hold jump for a higher leap.</p>
+    <p class="help-copy">Flags mark the next section. Keep walking. A striped plate scatters its matching log pile into the air. <strong>Echo your last eight seconds</strong> without moving the hamster. The Echo starts at the beginning of its clip. Repeat plate presses send logs at you; use raised ground as cover. Your clone holds its last spot for three seconds, then fades. When the plate is released, the scattered logs vanish one by one as the pile rebuilds from the bottom.</p>
+    <div class="keyboard-help"><span>Run <kbd>← →</kbd> / <kbd>A D</kbd></span><span>Walk <kbd>Shift + ← →</kbd></span><span>Jump <kbd>Space</kbd> / <kbd>W ↑</kbd></span><span>Echo <kbd>E</kbd></span><span>Retry <kbd>R</kbd></span></div>
+    <button id="hint-button" class="menu-button">A little hint <span>↗</span></button><p id="hint-text" class="hint-text" hidden></p>
+    <button class="primary-button" data-close="help-dialog">Let's explore <span>→</span></button>
+  </dialog>
+  <dialog id="win-dialog" class="paper-dialog win-dialog" aria-labelledby="win-title">
+    <div class="win-doodle" aria-hidden="true">✳</div><span class="eyebrow">A LITTLE MEMORY FOUND</span><h2 id="win-title">You were there for you.</h2><p id="win-copy">Another little corner of the world is waiting.</p>
+    <button id="next-button" class="primary-button">Keep wandering <span>→</span></button><button id="replay-button" class="text-button">Explore this trail again</button>
+  </dialog>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
+

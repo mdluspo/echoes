@@ -1,0 +1,17 @@
+{
+  "name": "echoes-the-room-remembers",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "description": "A hand-drawn 2D hamster platform adventure with Echoes of your past runs.",
+  "scripts": {
+    "lettering": "node scripts/build-lettering.mjs",
+    "dev": "node server.mjs",
+    "start": "node server.mjs",
+    "test": "node --test test/*.test.js",
+    "check": "node --check server.mjs && node --check src/engine.js && node --check src/log-motion.js && node --check src/art.js && node --check src/main.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

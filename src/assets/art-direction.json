@@ -1,0 +1,82 @@
+{
+  "mode": "Built-in image_gen tool for outdoor raster artwork; user-supplied hamster split losslessly with System.Drawing",
+  "style_reference": "User's white belted hamster sheet; white paper with black sketch lines, slightly naturalistic background forms and minimal detail.",
+  "active_assets": [
+    {
+      "path": "hamster-belted-sheet.png",
+      "source": "User supplied",
+      "format": "1536x768 RGBA; 6 columns x 3 rows; 18 equal 256x256 cells"
+    },
+    {
+      "path": "hamster-idle.png",
+      "format": "1536x256; six idle frames"
+    },
+    {
+      "path": "hamster-walk.png",
+      "format": "1536x256; six distance-driven locomotion frames"
+    },
+    {
+      "path": "hamster-jump.png",
+      "format": "1536x256; crouch, launch, rise, apex, fall and landing"
+    },
+    {
+      "path": "hamster-frames/",
+      "format": "18 equal 256x256 PNGs preserving source pixels and transparency"
+    },
+    {
+      "path": "meadow-sketch-v1.png",
+      "format": "2048x683 opaque white background panorama",
+      "prompt": "Use case: illustration-story. Asset: outdoor background panorama for a side-view hamster platform game. Attached hamster is the style reference.\nWhite paper, BLACK INK only. Sparse raw pen sketch with bold imperfect outer strokes and a few finer botanical lines. A LITTLE believable anatomy in tree trunks and branches, but very minimalist. No gray fills or shading.\nA quiet open meadow at the edge of a woodland: two loosely drawn slender deciduous trees off-center, natural branching trunks and a few leaf clusters, low distant rolling hills, one sparse clump of tall grass near an edge. The whole upper half is wide empty white SKY. Lots of open breathing room in the middle for the hamster. No roof, masonry, arches, cave, dungeon, buildings or enclosed spaces.\nWide 3:1 panorama, flat side elevation. Distant trees stand on the same soft distant horizon around the lower quarter; the very bottom stays empty white. Keep foreground gameplay separate: NO foreground floor, platforms, floating logs, fences or gates. Tree masses must be airy line drawings, not dense black or gray filled canopies. Selected thick black trunk edges, a few branch forks, economical natural shapes; no repeated cartoon bubble canopy, no realistic rendering, gradients, shadows, detailed bark texture, full foliage, dense hatching or decoration.\nNo characters, text, labels, borders or UI. The feeling is an outdoor white-paper indie comic, understated and a little rough, with believable natural forms."
+    }
+  ],
+  "palette": "White object fills and sky; black ink lines. No gray washes, colored surfaces, gradients, or dark atmosphere.",
+  "setting": "One continuous outdoor route in three sections: The Meadow Path, Willow Creek and The Remembering Grove. Flags are checkpoints. Old sections retire only after leaving the view, and lock out backtracking.",
+  "font": {
+    "family": "IM Fell English",
+    "designer": "Igino Marini",
+    "source": "https://github.com/google/fonts/tree/main/ofl/imfellenglish",
+    "license": "fonts/OFL.txt",
+    "delivery": "Locally embedded Roman and Italic faces in src/theme-type.css"
+  },
+  "unused_variants": [
+    "dungeon-ink-v7.png",
+    "dungeon-marker-v2.png",
+    "dungeon-simple-v9.png",
+    "dungeon-terrain-v6.png",
+    "dungeon-vault-v6.png",
+    "dungeon-wall-v1.png",
+    "dungeon-white-v10.png",
+    "gate-wall-ink-v8.png",
+    "hamster-atlas-v1.png",
+    "hamster-doodle-v3.png",
+    "hamster-ink-v4.png",
+    "hamster-marker-v2.png",
+    "portcullis-ink-v7.png",
+    "terrain-simple-v9.png",
+    "terrain-white-v10.png",
+    "meadow-terrain-v1.png"
+  ],
+  "unused_asset_specs": [
+    {
+      "path": "meadow-terrain-v1.png",
+      "format": "1536x1024 transparent earth-bank and log atlas",
+      "prompt": "Use case: illustration-story. Asset: transparent outdoor terrain sheet for a white-paper 2D hamster platform game, TWO equal horizontal rows on 1536x1024.\nStyle reference: attached hamster. WHITE solid object interiors, BLACK sketch ink contours. Slightly believable natural forms but very economical: heavy uneven outer strokes, few finer inner lines, sparse raw pen drawing. No color, gray shading, gradients, shadows or background.\nTOP ROW y0-511: ONE continuous side-on EARTH BANK strip spanning the full image width. A flat walkable top edge at y125, with nothing projecting above it. Beneath: an irregular white soil cut face descending to y500, a few embedded stones of unequal sizes and two small exposed roots; no masonry courses or repeated brick pattern. Thick black uneven top edge, a few short thin soil lines only. Left/right same height to tile; open white soil face, no solid black underground fill. Transparent ABOVE the bank, bank itself solid white.\nBOTTOM ROW y512-1023: ONE horizontal fallen TREE LOG from x70..1466, flat usable top y640, bottom y820. Slightly irregular outline, blunt cut end on the left with two loose growth rings, one small knot, just two short lengthwise wood grain lines. No leaves, grass, supports, branches or dangling objects; the game draws the supporting stumps separately so they root in the real terrain. Transparent around the log. Simple hand-drawn wooden beam, not stone.\nKeep every piece fully within its row, no overlap across y512. No text, labels, grid, backdrop, other objects or UI. The whole sheet should feel like spare black-pen natural scenery drawn for the exact hamster reference."
+    }
+  ],
+  "terrain": {
+    "renderer": "src/art.js",
+    "collision": "src/engine.js terrainY",
+    "style": "Continuous raised grass banks, white fills, black outlines, sparse grass and tiny dirt marks; no exposed roots or supports."
+  },
+  "log_piles": {
+    "renderer": "src/art.js",
+    "animation": "src/log-motion.js",
+    "behavior": "Large tightly packed 24-log stacks, taller than a normal jump. Plate press flings randomized spinning debris with gravity, ground bounces and flat settling. Logs remain while held. On release, debris fades out sequentially as new pieces pop into place locally, bottom to top, in 0.72 seconds. Ground contacts only; sleeping debris and cached drawings reduce frame cost.",
+    "damage": "Scattered debris is always harmless. The first section never queues aimed attacks and clears stray hostile shots; this remains true after repeated presses, Echoes, retries and saved learning. Sections two and three use 50% and 70% attack chances on familiar repeat contacts. Aimed shots use swept capsule collision and are blocked by terrain cover."
+  },
+  "backdrop_opacity": 0.28,
+  "sky_message": {
+    "text": "Baviloya is Watching You",
+    "placement": "World-anchored above the first death location; bold IM Fell English, no overlay; preserved in saved memory. No repeated messages after later deaths."
+  }
+}
