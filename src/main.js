@@ -1,14 +1,14 @@
-﻿import { Adventure, CHAPTERS, STEP, ECHO_SECONDS } from './engine.js';
+import { Adventure, CHAPTERS, STEP, SECTION_LENGTH } from './engine.js';
 import { Illustrator, loadArtwork } from './art.js';
 
 const $=id=>document.getElementById(id),SAVE_KEY='echoes.hamster-adventure.v2';
-const fresh=()=>({completed:[],lastRoom:0,memory:{},sound:false,motion:true,trails:false});
+const fresh=()=>({completed:[],lastRoom:0,memory:{},sound:false,motion:true,settingsVersion:2,sectionLength:SECTION_LENGTH});
 function loadSave(){
   try{
     const raw=JSON.parse(localStorage.getItem(SAVE_KEY));if(!raw||typeof raw!=='object')return fresh();
     const completed=Array.isArray(raw.completed)?[...new Set(raw.completed.filter(n=>Number.isInteger(n)&&n>=0&&n<CHAPTERS.length))]:[];
     let unlocked=0;while(unlocked<CHAPTERS.length-1&&completed.includes(unlocked))unlocked++;
-    return{completed,lastRoom:Number.isInteger(raw.lastRoom)&&raw.lastRoom>=0&&raw.lastRoom<=unlocked?raw.lastRoom:0,memory:{lastRoute:raw.memory?.lastRoute==='high'?'high':'low',jumps:Math.max(0,Number(raw.memory?.jumps)||0),falls:Math.max(0,Number(raw.memory?.falls)||0),completed:Math.max(0,Number(raw.memory?.completed)||0),echoes:Math.max(0,Number(raw.memory?.echoes)||0),logDeaths:Math.max(0,Number(raw.memory?.logDeaths)||0),hasWitnessedDeath:raw.memory?.hasWitnessedDeath===true,firstDeath:Number.isFinite(raw.memory?.firstDeath?.x)&&Number.isFinite(raw.memory?.firstDeath?.y)&&Number.isInteger(raw.memory?.firstDeath?.section)&&raw.memory.firstDeath.section>=0&&raw.memory.firstDeath.section<CHAPTERS.length?{x:raw.memory.firstDeath.x,y:raw.memory.firstDeath.y,section:raw.memory.firstDeath.section,text:'Baviloya is Watching You'}:null},sound:raw.sound===true,motion:raw.motion!==false,trails:raw.trails===true};
+    return{completed,lastRoom:Number.isInteger(raw.lastRoom)&&raw.lastRoom>=0&&raw.lastRoom<=unlocked?raw.lastRoom:0,memory:{lastRoute:raw.memory?.lastRoute==='high'?'high':'low',jumps:Math.max(0,Number(raw.memory?.jumps)||0),falls:Math.max(0,Number(raw.memory?.falls)||0),completed:Math.max(0,Number(raw.memory?.completed)||0),echoes:Math.max(0,Number(raw.memory?.echoes)||0),logDeaths:Math.max(0,Number(raw.memory?.logDeaths)||0),retreats:Math.max(0,Number(raw.memory?.retreats)||0),hasWitnessedDeath:raw.memory?.hasWitnessedDeath===true,firstDeathDismissed:raw.memory?.firstDeathDismissed===true,firstDeath:Number.isFinite(raw.memory?.firstDeath?.x)&&Number.isFinite(raw.memory?.firstDeath?.y)&&Number.isInteger(raw.memory?.firstDeath?.section)&&raw.memory.firstDeath.section>=0&&raw.memory.firstDeath.section<CHAPTERS.length?{x:raw.memory.firstDeath.x+raw.memory.firstDeath.section*(SECTION_LENGTH-(raw.sectionLength||2400)),y:raw.memory.firstDeath.y,section:raw.memory.firstDeath.section,text:'Baviloya is Watching You'}:null},sound:raw.sound===true,motion:raw.settingsVersion===2?raw.motion!==false:true,settingsVersion:2,sectionLength:SECTION_LENGTH};
   }catch{return fresh();}
 }
 let save=loadSave(),game=new Adventure(save.lastRoom,save.memory);
@@ -34,9 +34,13 @@ function sound(kind){
 }
 function closeDialogs(){document.querySelectorAll('dialog[open]').forEach(d=>d.close());}
 function openDialog(id){clearInput();$(id).showModal();}
-function restart(full=false){
-  clearTimeout(winTimer);closeDialogs();clearInput();if(full)game.reset();else game.restartTake();painter.rewind();temporaryCue='';startedAt=performance.now();renderUI();focusGame();
+function restart(){
+  clearTimeout(winTimer);closeDialogs();clearInput();game.restartTake();painter.rewind();temporaryCue='';startedAt=performance.now();renderUI();focusGame();
 }
+function restartAll(){
+  clearTimeout(winTimer);game=new Adventure();save.completed=[];save.lastRoom=0;save.memory={};persist();closeDialogs();clearInput();painter.rewind();temporaryCue='';cueUntil=0;startedAt=performance.now();pickerSignature='';$('hint-text').hidden=true;renderUI();focusGame();
+}
+function resetEcho(){if(game.dead||game.won)return;game.resetEcho();renderUI();focusGame();}
 function loadRoom(index){
   let unlocked=0;while(unlocked<CHAPTERS.length-1&&save.completed.includes(unlocked))unlocked++;
   if(!Number.isInteger(index)||index<0||index>unlocked)return;
@@ -47,16 +51,17 @@ function leaveEcho(){
   if(isPaused()||game.dead)return;
   const plate=game.level.plates.find(p=>game.onPlate(game.player,p));
   const result=game.commit();
-  if(!result.ok){say({air:'Land on a ledge first.',empty:'Leave a few little footsteps first.',long:'Press R to start a fresh recording.',limit:'Remove an Echo in the pause menu to try again.',won:'A little memory found.'}[result.reason]);return;}
+  if(!result.ok){say({air:'Land on a ledge first.',empty:'Leave a few little footsteps first.',long:'Press R to start a fresh recording.',limit:'Both Echo slots are full. Q clears them.',won:'A little memory found.'}[result.reason]);return;}
   sound('echo');
-  say(plate?(game.activeIndex===0?'Your Echo will replay those steps. Keep moving.':'Your Echo will replay this press. Find cover.'):'Eight seconds of footsteps. A brief chance to act.',4000);renderUI();focusGame();
+  const threatened=plate&&game.attacks.some(attack=>attack.pile.requires.includes(plate.id));
+  say(plate?(threatened?'Your Echo will replay this press. Find cover.':'Your Echo will replay those steps. Keep moving.'):'Your footsteps, replayed.',4000);renderUI();focusGame();
 }
 function finishRoom(){
   save.completed=[...new Set([...save.completed,...game.completed])];save.memory={...game.memory};save.lastRoom=game.activeIndex;persist();
   startedAt=performance.now();temporaryCue='';
   if(game.won){
     clearInput();$('win-title').textContent='A little further, together.';$('win-copy').textContent='Three connected trails, and a path that remembered your footsteps.';
-    $('next-button').innerHTML='Wander from the beginning <span>?</span>';
+    $('next-button').innerHTML='Wander from the beginning <span>→</span>';
     winTimer=setTimeout(()=>{if(game.won&&!isPaused())openDialog('win-dialog');},1000);
   }
   renderUI();
@@ -65,38 +70,40 @@ function renderUI(){
   const level=game.level,onPlate=level.plates.some(p=>game.onPlate(game.player,p));
   $('room-name').textContent=level.region;
   const activeEchoes=game.echoes.filter(e=>game.echoActive(e)).length;
-  $('echo-button').disabled=game.won||game.dead||game.recording.length<12||activeEchoes>=level.limit||!game.player.grounded;
-  $('echo-button').classList.toggle('ready',onPlate&&!$('echo-button').disabled);
+  const occupied=new Set(game.echoes.filter(e=>game.echoActive(e)).map((echo,i)=>echo.slot??i));
+  [...$('echo-slots').children].forEach((slot,i)=>slot.classList.toggle('available',!occupied.has(i)));
+  const slotLabel=`${level.limit-activeEchoes} of ${level.limit} Echo slots available`;
+  $('echo-slots').setAttribute('aria-label',slotLabel);$('echo-slots').title=slotLabel;
+  $('vanish-echo-button').disabled=game.won||game.dead||!activeEchoes;
+  $('echo-button').disabled=game.won||game.dead||game.echoRecording.length<12||activeEchoes>=level.limit||!game.player.grounded;
+  $('echo-button').classList.toggle('ready',activeEchoes<level.limit&&!game.dead&&!game.won);
   const seconds=(performance.now()-startedAt)/1000;
-  const cue=performance.now()<cueUntil?temporaryCue:onPlate&&activeEchoes<level.limit?(touchLayout()?'Tap Echo last 8s here.':'E: copy the last 8 seconds here.'):game.won?'A path, discovered.':seconds<8?(level.index===0?(touchLayout()?'Hold ← → to scurry · ↑ to jump':'← → to scurry · Space to jump'):'Find the striped plate. Leave an Echo.') : '';
+  const cue=performance.now()<cueUntil?temporaryCue:onPlate&&activeEchoes<level.limit?(touchLayout()?'Tap Echo here.':'E: leave an Echo here.'):game.won?'A path, discovered.':seconds<8?(level.index===0?(touchLayout()?'Hold ← → to scurry · ↑ to jump':'← → to scurry · Space to jump'):'Find the striped plate. Leave an Echo.') : '';
   $('cue').textContent=cue;$('cue').classList.toggle('quiet',!cue);
-  const recorded=Math.min(ECHO_SECONDS,(game.recording.length-1)*STEP);
-  $('memory-label').textContent=`${recorded.toFixed(1)} / ${ECHO_SECONDS}s`;
-  $('memory-fill').style.width=`${recorded/ECHO_SECONDS*100}%`;
-  $('remove-echo-button').hidden=!game.echoes.length;
-  for(const id of ['retry-button','reset-button','remove-echo-button'])$(id).disabled=game.won;
-  for(const [id,value]of [['sound',save.sound],['motion',save.motion],['trail',save.trails]]){const button=$(id+'-button');button.setAttribute('aria-pressed',String(value));button.querySelector('span').textContent=value?'on':'off';}
+  $('sound-button').setAttribute('aria-pressed',String(save.sound));$('sound-button').querySelector('span').textContent=save.sound?'on':'off';
   let unlocked=0;while(unlocked<CHAPTERS.length-1&&save.completed.includes(unlocked))unlocked++;
   const signature=`${level.index}:${unlocked}`;
   if(pickerSignature!==signature){
     $('room-picker').innerHTML=CHAPTERS.map((room,i)=>`<button data-room="${i}" title="${room.region}" aria-label="Trail ${i+1}: ${room.region}" ${i===level.index?'aria-current="step"':''} ${i>unlocked?'disabled':''}>${i+1}</button>`).join('');
     pickerSignature=signature;
   }
-  $('game').setAttribute('aria-label',`${level.region}. Hamster at ${Math.round(game.player.x)}, ${Math.round(game.player.y)}. ${game.player.grounded?'On the ground':'Jumping'}. ${activeEchoes} active Echoes. ${game.dead?'Hit. Returning to the checkpoint. ':''}Left and Right to run, Space to jump, E copies the last 8 seconds.`);
+  $('game').setAttribute('aria-label',`${level.region}. Hamster at ${Math.round(game.player.x)}, ${Math.round(game.player.y)}. ${game.player.grounded?'On the ground':'Jumping'}. ${activeEchoes} active Echoes. ${game.dead?'Hit. Returning to the checkpoint. ':''}Left and Right to run, Space to jump, E replays your recent footsteps, Q resets the Echo.`);
 }
 
 $('menu-button').addEventListener('click',()=>openDialog('menu-dialog'));
 $('help-button').addEventListener('click',()=>openDialog('help-dialog'));
 $('echo-button').addEventListener('click',leaveEcho);
-$('retry-button').addEventListener('click',()=>restart());
-$('reset-button').addEventListener('click',()=>restart(true));
-$('remove-echo-button').addEventListener('click',()=>{closeDialogs();game.removeEcho();painter.rewind();renderUI();focusGame();});
+$('vanish-echo-button').addEventListener('click',resetEcho);
+$('restart-all-button').addEventListener('click',restartAll);
 $('sound-button').addEventListener('click',()=>{save.sound=!save.sound;persist();renderUI();if(save.sound)sound('seed');});
-$('motion-button').addEventListener('click',()=>{save.motion=!save.motion;persist();renderUI();});
-$('trail-button').addEventListener('click',()=>{save.trails=!save.trails;persist();renderUI();});
 $('room-picker').addEventListener('click',event=>{const button=event.target.closest('[data-room]');if(button&&!button.disabled)loadRoom(Number(button.dataset.room));});
-$('hint-button').addEventListener('click',()=>{$('hint-text').hidden=false;$('hint-text').textContent=game.level.index===0?'The first meadow has no log attacks. Step on the striped plate, press E, then jump across the creek while your Echo replays the press.':game.level.index===2?'The grove remembers your route and sends two volleys. Echo the plate, hide on the sheltered side of the raised bank, then move after the logs hit the bank.':'Echo leaves you where you stand. Repeat presses wake the logs. Step toward the raised bank, keep its crest between you and the pile, then cross after the volley hits cover.';});
-$('next-button').addEventListener('click',()=>loadRoom(0));
+$('hint-button').addEventListener('click',()=>{
+  const puzzle=Math.max(0,game.section.logPiles.findIndex(p=>game.player.x<p.x+p.w));
+  const safe=game.activeIndex===0;
+  const hints=[safe?'The meadow has no log attacks. Step on the striped plate, press E, then jump across the creek while your Echo replays the press.':game.activeIndex===2?'The retreat ground can collapse. If you go back, jump across the hole. Let an Echo hold the high switch while you cross the creek.':'Jump from the grassy rise onto the high switch and leave an Echo. If the logs lift for an attack, turn left and drop behind the raised ground. Return via the grassy rise after the volley.', 'The flat switch only scatters harmless logs. Use a free Echo slot here, then cross while your Echo holds the plate. Q clears both old clips if you need room.',safe?'Make a fresh Echo on the high perch, then cross the wide creek while it keeps the final pile scattered.':'Make an Echo on the high perch. If the pile prepares an attack, retreat left behind the raised bank, then return and cross the wide creek.'];
+  $('hint-text').hidden=false;$('hint-text').textContent=hints[puzzle];
+});
+$('next-button').addEventListener('click',restartAll);
 $('replay-button').addEventListener('click',()=>loadRoom(game.level.index));
 for(const button of document.querySelectorAll('[data-close]'))button.addEventListener('click',()=>$(button.dataset.close).close());
 for(const dialog of document.querySelectorAll('dialog'))dialog.addEventListener('close',()=>{clearInput();focusGame();if(game.won&&dialog.id!=='win-dialog'&&!isPaused())$('win-dialog').showModal();});
@@ -113,6 +120,7 @@ document.addEventListener('keydown',event=>{
   if(event.repeat)return;
   if(k==='e'||k==='enter'){event.preventDefault();leaveEcho();}
   if(k==='r'){event.preventDefault();restart();}
+  if(k==='q'){event.preventDefault();resetEcho();}
   if(k==='escape'){event.preventDefault();openDialog('menu-dialog');}
 });
 document.addEventListener('keyup',event=>keys.delete(event.key.toLowerCase()));
@@ -143,15 +151,17 @@ function animate(time){
           sound(kind);
           if(kind==='land'||kind==='seed')painter.burst(game.player,kind);
           if(kind==='death'){painter.burst(game.player,'death');clearInput();temporaryCue='';cueUntil=0;save.memory={...game.memory};persist();renderUI();}
-          if(kind==='respawn'){painter.rewind();focusGame();renderUI();}
-          if(kind==='warning')say('It remembers that press.',1700);
-          if(kind==='plate'&&!game.echoes.some(e=>game.echoActive(e)))say(touchLayout()?'Tap Echo last 8s on this plate.':'E: copy the last 8 seconds on this plate.',4000);
+          if(kind==='respawn'){focusGame();renderUI();}
+          if(kind==='warning')say('Something moved.',1100);
+          if(kind==='collapse')painter.burst(game.player,'land');
+          if(kind==='plate'&&!game.echoes.some(e=>game.echoActive(e)))say(touchLayout()?'Tap Echo on this plate.':'E: leave an Echo on this plate.',4000);
           if(kind==='logs'&&game.echoes.some(e=>game.echoActive(e)))say('Logs away! Keep going!',2000);
           if(kind==='section'||kind==='win')finishRoom();
         }
       }
     }
-    painter.draw(game,visualTime,dt,{motion:save.motion,trails:save.trails,paused});
+    painter.draw(game,visualTime,dt,{motion:true,paused});
+    if(save.memory.firstDeathDismissed!==game.memory.firstDeathDismissed){save.memory={...game.memory};persist();}
     if(time-lastUI>200){renderUI();lastUI=time;}
   }
   requestAnimationFrame(animate);

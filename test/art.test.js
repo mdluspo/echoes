@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Adventure, PHYSICS, terrainY } from '../src/engine.js';
-import { hamsterFrame } from '../src/art.js';
+import { hamsterFrame, mainSpriteBand, groundProfilePoints } from '../src/art.js';
 
 test('movement plays all six supplied locomotion frames, independently of wall-clock time',()=>{
   const game=new Adventure(),poses=new Set();
@@ -45,4 +45,17 @@ test('the grassy rises are continuous walkable ground',()=>{
   }
   assert.ok(game.player.y<400);
   assert.equal(game.level.platforms,undefined);
+});
+
+test('sprite cropping excludes detached pixels from the row above without trimming the pose',()=>{
+  const rows=Array(256).fill(0);rows[0]=55;rows[1]=43;
+  for(let y=66;y<=252;y++)rows[y]=y===66?2:80;
+  assert.deepEqual(mainSpriteBand(rows),{top:66,bottom:252,pixels:2+186*80});
+});
+
+test('slope vertices stay identical in world space when the camera moves fractionally',()=>{
+  const game=new Adventure(1),x=game.section.start;
+  const visible=points=>points.filter(([px])=>px>=x+450&&px<=x+730);
+  const first=visible(groundProfilePoints(game.level,x+400.25,x+780.25));
+  for(const offset of [.5,.75,1.25,2.9])assert.deepEqual(visible(groundProfilePoints(game.level,x+400+offset,x+780+offset)),first);
 });

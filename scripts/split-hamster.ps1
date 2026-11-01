@@ -1,4 +1,4 @@
-param([string]$Source = (Join-Path $PSScriptRoot '../src/assets/hamster-belted-sheet.png'))
+param([string]$Source = (Join-Path $PSScriptRoot '../src/assets/hamster-new-sheet.png'))
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Drawing
 $sheet = [System.Drawing.Bitmap]::new((Resolve-Path -LiteralPath $Source).Path)
@@ -9,7 +9,7 @@ try {
   $assetDirectory = Split-Path -Parent (Resolve-Path -LiteralPath $Source).Path
   $frameDirectory = Join-Path $assetDirectory 'hamster-frames'
   [System.IO.Directory]::CreateDirectory($frameDirectory) | Out-Null
-  $states = @('idle', 'walk', 'jump')
+  $states = @('idle', 'run', 'jump')
   for ($row = 0; $row -lt 3; $row++) {
     $strip = $sheet.Clone([System.Drawing.Rectangle]::new(0, $row * $cellHeight, $sheet.Width, $cellHeight), [System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
     try { $strip.Save((Join-Path $assetDirectory "hamster-$($states[$row]).png"), [System.Drawing.Imaging.ImageFormat]::Png) } finally { $strip.Dispose() }

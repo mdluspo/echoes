@@ -1,10 +1,10 @@
 {
   "mode": "Built-in image_gen tool for outdoor raster artwork; user-supplied hamster split losslessly with System.Drawing",
-  "style_reference": "User's white belted hamster sheet; white paper with black sketch lines, slightly naturalistic background forms and minimal detail.",
+  "style_reference": "User's newest white hamster sheet, supplied November 1, 2026: simple ink character, white paper, black sketch lines, natural background forms with minimal detail.",
   "active_assets": [
     {
-      "path": "hamster-belted-sheet.png",
-      "source": "User supplied",
+      "path": "hamster-new-sheet.png",
+      "source": "Latest user-supplied idle/run/jump sheet; original pixels preserved",
       "format": "1536x768 RGBA; 6 columns x 3 rows; 18 equal 256x256 cells"
     },
     {
@@ -12,8 +12,8 @@
       "format": "1536x256; six idle frames"
     },
     {
-      "path": "hamster-walk.png",
-      "format": "1536x256; six distance-driven locomotion frames"
+      "path": "hamster-run.png",
+      "format": "1536x256; six distance-driven run frames from row two"
     },
     {
       "path": "hamster-jump.png",
@@ -30,7 +30,7 @@
     }
   ],
   "palette": "White object fills and sky; black ink lines. No gray washes, colored surfaces, gradients, or dark atmosphere.",
-  "setting": "One continuous outdoor route in three sections: The Meadow Path, Willow Creek and The Remembering Grove. Flags are checkpoints. Old sections retire only after leaving the view, and lock out backtracking.",
+  "setting": "One continuous outdoor route in three 4000-pixel sections: The Meadow Path, Willow Creek and The Remembering Grove. Each has four creek gaps and a longer sequence of grassy rises. Flags are checkpoints. Old sections retire only after leaving the view, and lock out backtracking.",
   "font": {
     "family": "IM Fell English",
     "designer": "Igino Marini",
@@ -54,7 +54,9 @@
     "portcullis-ink-v7.png",
     "terrain-simple-v9.png",
     "terrain-white-v10.png",
-    "meadow-terrain-v1.png"
+    "meadow-terrain-v1.png",
+    "hamster-belted-sheet.png",
+    "hamster-walk.png"
   ],
   "unused_asset_specs": [
     {
@@ -66,17 +68,28 @@
   "terrain": {
     "renderer": "src/art.js",
     "collision": "src/engine.js terrainY",
-    "style": "Continuous raised grass banks, white fills, black outlines, sparse grass and tiny dirt marks; no exposed roots or supports."
+    "style": "Continuous raised grass banks, white fills, black outlines, sparse grass and tiny dirt marks; no exposed roots or supports. World-anchored sample vertices prevent slope twitching when the camera moves. The short downhill grade is 90 pixels long, replacing the abrupt 20-pixel descent. Gentle grades stay walkable; genuinely steep descents use gravity. Feet cannot pass through solid soil; real gaps remain open.",
+    "sections": "Every section has three Echo puzzles. Level one never attacks. Level two attacks require reachable cover. Level three's first and last puzzles can attack: the first uses a checked jump escape across its 150-pixel collapsing retreat hole onto solid landing ground, while the last uses raised-bank cover. Middle flat switches remain harmless. Grounded direction changes brake immediately for a quick retreat."
   },
   "log_piles": {
     "renderer": "src/art.js",
     "animation": "src/log-motion.js",
     "behavior": "Large tightly packed 24-log stacks, taller than a normal jump. Plate press flings randomized spinning debris with gravity, ground bounces and flat settling. Logs remain while held. On release, debris fades out sequentially as new pieces pop into place locally, bottom to top, in 0.72 seconds. Ground contacts only; sleeping debris and cached drawings reduce frame cost.",
-    "damage": "Scattered debris is always harmless. The first section never queues aimed attacks and clears stray hostile shots; this remains true after repeated presses, Echoes, retries and saved learning. Sections two and three use 50% and 70% attack chances on familiar repeat contacts. Aimed shots use swept capsule collision and are blocked by terrain cover."
+    "damage": "Ordinary scatter is harmless. Level one never attacks. Standard later traps require real reachable cover; level three's opening trap instead requires a checked jump escape and solid landing beyond its collapsing hole. Eligibility is checked before scheduling and launching. Eligible presses independently roll 50% / 70% chances from the first encounter; no guaranteed ambush and no held-frame rerolls. Flat middle switches stay harmless. All 24 hostile logs lift over 0.22 seconds and launch at 0.46 seconds independently of player movement, around 1600 to 1800 pixels per second. Joining an Echo-held or resolved plate never rearms it. Swept capsule collision checks terrain before damage."
   },
   "backdrop_opacity": 0.28,
   "sky_message": {
     "text": "Baviloya is Watching You",
-    "placement": "World-anchored above the first death location; bold IM Fell English, no overlay; preserved in saved memory. No repeated messages after later deaths."
-  }
+    "placement": "World-anchored above the first death location; bold IM Fell English, no overlay. Once it leaves either camera edge, it disappears immediately and is permanently dismissed in saved memory. Later deaths never create another message. Restart all levels begins a fresh run."
+  },
+  "echo": {
+    "slots": 2,
+    "recording_seconds": 12,
+    "maximum_replay_seconds": 1,
+    "final_pose_hold_seconds": 7,
+    "behavior": "Two Echoes replay independently. Each replays only the latest second at normal movement speed. On an occupied switch, the clip begins during the most recent uninterrupted plate contact, so the clone holds immediately without replaying the approach. E is black when a slot is free and white when both are occupied; two small ink slots above it show capacity. Q vanishes both clones and starts a fresh clip while retaining the recent clip for immediate reuse, so E has no delay after Vanish; fallback clips use the same short replay. Fresh footsteps replace that fallback when enough have been recorded. Death and section changes clear both recordings. Each clone has its own circle timer. No dotted playback paths or numeric timers."
+  },
+  "sprite_rendering": "Main-pose alpha bounds exclude detached pixels from the preceding row in run frames four/five and jump frame five. Original sheet and equal frame assets remain unchanged.",
+  "ambient_animation": "Always enabled automatically. Six idle poses, gently swaying grass and distant trees, moving creek ripples, bobbing seeds and fluttering checkpoint flags. Menu contains Resume, Restart, Sound and trail selection.",
+  "death_animation": "Backward ballistic knockback with a tumbling body, flicker after 0.38 seconds, disappearance at 0.9 seconds. Camera eases from its current view back to the section spawn after disappearance. Respawn does not reset the camera, and begins with no Echo or old clip."
 }

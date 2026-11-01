@@ -1,15 +1,16 @@
 import { LogStack } from './log-motion.js';
 /** Deterministic side-view physics and recordings. Rendering and input live elsewhere. */
 export const STEP = 1 / 60;
-export const ECHO_SECONDS = 8;
+export const ECHO_SECONDS = 12;
 export const ECHO_TICKS = Math.round(ECHO_SECONDS / STEP);
-export const ECHO_HOLD_TICKS = Math.round(3 / STEP);
-export const PHYSICS = { speed: 285, walkSpeed: 125, jump: 600, gravity: 1600, width: 34, height: 61, coyote: .10, buffer: .13 };
-export const SECTION_LENGTH=2400;
+export const ECHO_REPLAY_TICKS = Math.round(1 / STEP);
+export const ECHO_HOLD_TICKS = Math.round(7 / STEP);
+export const PHYSICS = { speed: 285, walkSpeed: 125, jump: 650, gravity: 1600, width: 34, height: 61, coyote: .10, buffer: .13 };
+export const SECTION_LENGTH=4000;
 export const CHAPTERS = [
-  { name:'A friend from before', region:'The Meadow Path', limit:1 },
-  { name:'Over the creek', region:'Willow Creek', limit:1 },
-  { name:'The path remembers', region:'The Remembering Grove', limit:1 },
+  { name:'A friend from before', region:'The Meadow Path', limit:2 },
+  { name:'Over the creek', region:'Willow Creek', limit:2 },
+  { name:'The path remembers', region:'The Remembering Grove', limit:2 },
 ];
 const approach = (value, target, amount) => value < target ? Math.min(target, value + amount) : Math.max(target, value - amount);
 const overlaps = (a, b) => a.x + PHYSICS.width / 2 > b.x && a.x - PHYSICS.width / 2 < b.x + b.w && a.y > b.y && a.y - PHYSICS.height < b.y + b.h;
@@ -26,38 +27,82 @@ export function segmentBox(from,to,box){
 export function createLevel(index,memory={}){
   if(!CHAPTERS[index])throw new Error('Unknown trail section');
   const start=index*SECTION_LENGTH,end=start+SECTION_LENGTH,id=String.fromCharCode(65+index);
-  const gaps=index===1?[720,880,1590,1740]:index===2?[760,900,1540,1690]:[740,900,1530,1680];
-  const ground=[{x:index===0?-300:0,y:510,w:gaps[0]+(index===0?300:0),h:700},{x:gaps[1],y:510,w:gaps[2]-gaps[1],h:700},{x:gaps[3],y:510,w:SECTION_LENGTH-gaps[3]+(index===2?300:0),h:700}];
-  const mounds=index===1?[
-    {x:250,y:455,w:110},{x:420,y:410,w:190},{x:1370,y:445,w:90},{x:1480,y:385,w:110},{x:1880,y:440,w:140},{x:2110,y:405,w:100}
-  ]:index===2?[
-    {x:235,y:455,w:125},{x:410,y:395,w:220},{x:1370,y:445,w:90},{x:1460,y:380,w:80},{x:1850,y:440,w:120},{x:2080,y:395,w:120}
+  const gaps=index===0?[740,900,1530,1680]:[780,920,1600,1740];
+  const extraGaps=index===0?[2620,2770,3330,3490]:[2580,2760,3300,3500];
+  const ground=[{x:index===0?-300:0,y:510,w:gaps[0]+(index===0?300:0),h:700},{x:gaps[1],y:510,w:gaps[2]-gaps[1],h:700},{x:gaps[3],y:510,w:extraGaps[0]-gaps[3],h:700},{x:extraGaps[1],y:510,w:extraGaps[2]-extraGaps[1],h:700},{x:extraGaps[3],y:510,w:SECTION_LENGTH-extraGaps[3]+(index===2?300:0),h:700}];
+  const mounds=index===0?[
+    {x:235,y:455,w:125},{x:390,y:390,w:220},{x:1360,y:445,w:90},{x:1420,y:380,w:110},{x:1830,y:450,w:135},{x:2040,y:395,w:160},{x:660,y:355,w:100,ramp:140,cover:true}
+  ]:[{x:240,y:430,w:280,rampRight:90},{x:1380,y:430,w:220}];
+  // Keep the approach to each log barrier below jump-over height.
+  if(index===0)mounds.splice(4,2);
+  mounds.push(...(index===0?[
+    {x:2460,y:455,w:100},{x:2540,y:415,w:80,ramp:95},{x:2860,y:460,w:110},{x:3080,y:395,w:250}
   ]:[
-    {x:235,y:455,w:125},{x:390,y:390,w:220},{x:1360,y:445,w:90},{x:1420,y:380,w:110},{x:1830,y:450,w:135},{x:2040,y:395,w:160}
-  ];
-  mounds.push({x:660,y:355+index*5,w:100,ramp:140,cover:true});
-  const plates=[{id,x:index===2?520:500,y:index===0?390:index===1?410:395}];
-  const logPiles=[{x:index===1?970:980,y:288,w:260,h:222,requires:[id]}];
-  const blockedRoute=index===2?(memory.lastRoute==='high'?'high':'low'):null;
-  const thorns=index===0?[]:index===1?[{x:2035,y:451,w:26,h:24}]:blockedRoute==='high'?[{x:2100,y:371,w:30,h:24}]:[{x:1375,y:409,w:30,h:36}];
+    {x:2470,y:450,w:60},{x:2500,y:395,w:80,ramp:100},{x:2840,y:455,w:100},{x:3060,y:370,w:240}
+  ]));
+  const terraces=index===0?[]:[{x:665,y:350,w:65,h:160}];
+  const holes=index===2?[{x:515,y:430,w:150,open:false,armed:false,triggerX:700,plateId:id}]:[];
+  const plates=[{id,x:index===0?500:690,y:index===0?390:350,retreatX:700,cover:index===1?{x:630,w:34}:null,jumpEscape:index===2?{x:480,w:34}:null},{id:id+'2',x:1860,y:510,retreatX:1800,cover:null},{id:id+'3',x:3150,y:index===0?395:370,retreatX:3000,cover:index>0?{x:2970,w:34}:null}];
+  const logPiles=[{x:980,y:288,w:260,h:222,requires:[id]},{x:2150,y:288,w:260,h:222,requires:[id+'2']},{x:3650,y:288,w:260,h:222,requires:[id+'3']}];
+  const blockedRoute=index===2?'retreat':null;
+  const thorns=[];
   const seeds=[{x:285,y:418},{x:445,y:350},{x:565,y:350},{x:(gaps[0]+gaps[1])/2,y:420},{x:1390,y:402},{x:1510,y:338},{x:1900,y:405},{x:2120,y:355},{x:2250,y:470}];
+  seeds.push({x:2410,y:405},{x:(extraGaps[0]+extraGaps[1])/2,y:335},{x:2880,y:410},{x:3150,y:index===0?350:325},{x:(extraGaps[2]+extraGaps[3])/2,y:315},{x:3650,y:375},{x:3870,y:470});
   const shift=items=>items.map(item=>({...item,x:item.x+start,section:index}));
-  return{...CHAPTERS[index],index,start,end,width:end,spawn:{x:start+100,y:510},exit:{x:end,y:510},ground:shift(ground),mounds:shift(mounds),plates:shift(plates),logPiles:shift(logPiles),thorns:shift(thorns),seeds:shift(seeds).map((seed,i)=>({...seed,id:index+':'+i})),blockedRoute,trap:{enabled:index>0,speed:1000+index*180+Math.min(100,(memory.logDeaths||0)*15),windup:.85-index*.17,shots:index===0?0:1+index,waves:index===0?0:index===2?2:1,chance:index===0?0:index===1?.5:.7},retired:false};
+  return{...CHAPTERS[index],index,start,end,width:end,spawn:{x:start+100,y:510},exit:{x:end,y:510},ground:shift(ground),mounds:shift(mounds),terraces:shift(terraces),holes:shift(holes).map(h=>({...h,triggerX:h.triggerX+start})),plates:shift(plates).map(p=>({...p,retreatX:p.retreatX+start,cover:p.cover?{...p.cover,x:p.cover.x+start}:null,jumpEscape:p.jumpEscape?{...p.jumpEscape,x:p.jumpEscape.x+start}:null})),logPiles:shift(logPiles),thorns:shift(thorns),seeds:shift(seeds).map((seed,i)=>({...seed,id:index+':'+i})),blockedRoute,trap:{enabled:index>0,speed:1500+index*100+Math.min(80,(memory.logDeaths||0)*10),windup:.46,shots:index===0?0:24,waves:index===0?0:1,chance:index===0?0:index===1?.5:.7},retired:false};
 }
 
 /** The renderer and collisions share this continuous grass-bank profile. */
 export function terrainY(level,x){
+  if((level.holes||[]).some(h=>h.open&&x>h.x&&x<h.x+h.w))return null;
   const bank=level.ground.find(g=>x>=g.x&&x<=g.x+g.w);
   if(!bank)return null;
   let y=bank.y;
   for(const mound of level.mounds){
     if(mound.x<bank.x||mound.x>=bank.x+bank.w)continue;
-    const ramp=mound.ramp??120,start=mound.x-ramp,end=mound.x+mound.w+ramp;
+    const ramp=mound.ramp??120,leftRamp=mound.rampLeft??ramp,rightRamp=mound.rampRight??ramp,start=mound.x-leftRamp,end=mound.x+mound.w+rightRamp;
     if(x<start||x>end)continue;
-    const t=x<mound.x?(x-start)/ramp:x>mound.x+mound.w?(end-x)/ramp:1;
+    const t=x<mound.x?(x-start)/leftRamp:x>mound.x+mound.w?(end-x)/rightRamp:1;
     y=Math.min(y,bank.y-(bank.y-mound.y)*(1-Math.cos(Math.PI*t))/2);
   }
+  for(const terrace of level.terraces||[])if(x>=terrace.x&&x<=terrace.x+terrace.w)y=Math.min(y,terrace.y);
   return y;
+}
+
+export function groundBanks(level){
+  let banks=level.ground.map(bank=>({...bank}));
+  for(const hole of level.holes||[])if(hole.open)banks=banks.flatMap(bank=>{
+    const end=bank.x+bank.w;if(hole.x>=end||hole.x+hole.w<=bank.x)return[bank];
+    const parts=[];if(hole.x>bank.x)parts.push({...bank,w:hole.x-bank.x});if(hole.x+hole.w<end)parts.push({...bank,x:hole.x+hole.w,w:end-hole.x-hole.w});return parts;
+  });return banks;
+}
+
+/** Attacks are allowed only at authored shelters backed by real, reachable terrain. */
+export function logAttackCover(level,plate,pile,trap){
+  if(!plate.cover||!pile||!trap.enabled||plate.section===0)return null;
+  const {x,w}=plate.cover,y=terrainY(level,x),left=terrainY(level,x-w/2),right=terrainY(level,x+w/2);
+  if(y===null||left===null||right===null||Math.max(Math.abs(left-y),Math.abs(right-y))>18||y-plate.y<PHYSICS.height+12)return null;
+  const distance=Math.abs(x-plate.x),reaction=trap.windup+Math.abs(pile.x+pile.w/2-plate.x)/trap.speed;
+  if(distance>PHYSICS.speed*reaction)return null;
+  const from=Math.min(x,plate.x),to=Math.max(x,plate.x);let shield=false;
+  // Collapsing soil cannot count as a shelter or a safe route to it, even before it opens.
+  if((level.holes||[]).some(h=>h.x<to&&h.x+h.w>from))return null;
+  for(let xx=from;xx<=to;xx+=4){const floor=terrainY(level,xx);if(floor===null)return null;if(floor<=y-PHYSICS.height-12)shield=true;}
+  return shield?{x,y,w}:null;
+}
+
+/** The opening grove trap is escaped by jumping the collapsing retreat path. */
+export function logAttackEscape(level,plate,pile,trap){
+  const cover=logAttackCover(level,plate,pile,trap);if(cover)return {...cover,kind:'cover'};
+  if(plate.section!==2||!plate.jumpEscape||!pile||!trap.enabled)return null;
+  const {x,w}=plate.jumpEscape,y=terrainY(level,x),left=terrainY(level,x-w/2),right=terrainY(level,x+w/2);
+  if(y===null||left===null||right===null||Math.max(Math.abs(left-y),Math.abs(right-y))>12)return null;
+  const hole=level.holes.find(h=>h.plateId===plate.id);if(!hole||x+w/2>=hole.x||plate.x<=hole.x+hole.w)return null;
+  const discriminant=PHYSICS.jump**2+2*PHYSICS.gravity*(y-plate.y);
+  if(discriminant<=0)return null;
+  const airborne=(PHYSICS.jump+Math.sqrt(discriminant))/PHYSICS.gravity;
+  if(Math.abs(x-plate.x)>PHYSICS.speed*airborne*.85)return null;
+  return {x,y,w,kind:'jump'};
 }
 
 export class Adventure {
@@ -65,11 +110,15 @@ export class Adventure {
     if(!CHAPTERS[index])throw new Error('Unknown trail section');
     this.random=random;this.memory={...memory};this.activeIndex=index;this.cameraFloor=index*SECTION_LENGTH;this.completed=Array.from({length:index},(_,i)=>i);
     this.sections=CHAPTERS.map((_,i)=>({...createLevel(i,this.memory),retired:i<index}));this.level={sections:this.sections,width:CHAPTERS.length*SECTION_LENGTH+300};
-    this.echoes=[];this.seeds=new Set();this.logStacks=new Map();this.route=null;this.attempts=1;this.stats={jumps:0,falls:0,echoes:0};this.pressCounts=new Map();this.playerPressCounts=new Map();this.skyMessages=memory.firstDeath&&memory.firstDeath.section>=index?[{...memory.firstDeath,text:'Baviloya is Watching You'}]:[];this.hasWitnessedDeath=memory.hasWitnessedDeath===true||Boolean(memory.firstDeath);this.echoSerial=0;this.projectiles=[];this.attacks=[];this.dead=false;this.deathTimer=0;this.syncWorld();this.restartTake();
+    this.echoes=[];this.seeds=new Set();this.logStacks=new Map();this.route=null;this.attempts=1;this.stats={jumps:0,falls:0,echoes:0};this.pressCounts=new Map();this.playerPressCounts=new Map();this.skyMessages=memory.firstDeath&&!memory.firstDeathDismissed&&memory.firstDeath.section>=index?[{...memory.firstDeath,text:'Baviloya is Watching You'}]:[];this.hasWitnessedDeath=memory.hasWitnessedDeath===true||Boolean(memory.firstDeath);this.echoSerial=0;this.projectiles=[];this.attacks=[];this.dead=false;this.deathTimer=0;this.syncWorld();this.restartTake();
   }
   get section(){return this.sections[this.activeIndex];}
+  updateSkyMessages(cameraLeft,viewWidth){
+    const visible=this.skyMessages.filter(message=>message.x+220>=cameraLeft&&message.x-220<=cameraLeft+viewWidth);
+    if(visible.length!==this.skyMessages.length){this.skyMessages=visible;this.memory.firstDeathDismissed=true;}
+  }
   syncWorld(){
-    for(const key of ['ground','mounds','plates','logPiles','thorns','seeds'])this.level[key]=this.sections.filter(s=>!s.retired).flatMap(s=>s[key]);
+    for(const key of ['ground','mounds','plates','logPiles','thorns','seeds','terraces','holes'])this.level[key]=this.sections.filter(s=>!s.retired).flatMap(s=>s[key]);
     this.level.ground=this.level.ground.reduce((banks,bank)=>{const last=banks.at(-1);if(last&&last.x+last.w===bank.x&&last.y===bank.y)last.w+=bank.w;else banks.push({...bank});return banks;},[]);
     Object.assign(this.level,{index:this.activeIndex,region:this.section.region,limit:this.section.limit,spawn:this.section.spawn,exit:this.sections.at(-1).exit});
     for(const pile of this.level.logPiles)if(!this.logStacks.has(pile.x))this.logStacks.set(pile.x,new LogStack(pile,x=>terrainY(this.level,x)));
@@ -89,15 +138,15 @@ export class Adventure {
     if(index===CHAPTERS.length-1){this.won=true;this.player.vx=0;events.push('win');return;}
     this.activeIndex++;this.echoes=[];this.tick=0;this.route=null;this.stats={jumps:0,falls:0,echoes:0};
     this.sections[this.activeIndex]=createLevel(this.activeIndex,this.memory);this.level.sections=this.sections;
-    this.syncWorld();this.recording=[snapshot(this.player)];this.recordingStarted=false;this.lastPressed=new Set();this.lastPlateActors=new Map();events.push('section');
+    this.syncWorld();this.recording=[snapshot(this.player)];this.echoFallback=null;this.recordingStarted=false;this.lastPressed=new Set();this.lastPlateActors=new Map();events.push('section');
   }
   restartTake() {
     for(const stack of this.logStacks.values())stack.reset();
     this.player = { ...this.level.spawn, vx:0, vy:0, grounded:true, facing:1, landing:0, stride:0, gait:'idle' };
-    this.dead=false;this.deathTimer=0;this.projectiles=[];this.attacks=[];for(const echo of this.echoes)echo.startTick=0;
+    this.dead=false;this.deathTimer=0;this.deathBody=null;for(const section of this.sections){section.trapFired=false;section.trapResolved=false;section.retreated=false;for(const plate of section.plates){plate.trapResolved=false;plate.retreated=false;}for(const hole of section.holes){hole.open=false;hole.armed=false;}}this.projectiles=[];this.attacks=[];for(const echo of this.echoes)echo.startTick=0;
     this.lastPlateActors=new Map();
     this.tick = 0; this.time = 0; this.won = false; this.coyote = PHYSICS.coyote; this.jumpBuffer = 0;
-    this.recording = [snapshot(this.player)]; this.recordingStarted = false; this.recordingFull = false; this.lastPressed = new Set();
+    this.recording = [snapshot(this.player)]; this.echoFallback=null;this.recordingStarted = false; this.recordingFull = false; this.lastPressed = new Set();
   }
   echoPosition(echo) {
     const elapsed=Math.max(0,this.tick-(echo.startTick||0)),frame=echo.frames[Math.min(elapsed,echo.frames.length-1)];
@@ -109,17 +158,35 @@ export class Adventure {
   onPlate(actor, plate) { return actor.grounded && Math.abs(actor.x - plate.x) < 32 && Math.abs(actor.y - plate.y) < 5; }
   pressed(id) { const plate = this.level.plates.find(p => p.id === id); return Boolean(plate && this.actors.some(a => this.onPlate(a, plate))); }
   pileCleared(pile) { return !this.logStacks.get(pile.x).solid; }
+  get echoRecording(){return this.recording.length>=12?this.recording:(this.echoFallback||this.recording);}
+  echoClip(recording=this.echoRecording){
+    let start=Math.max(0,recording.length-1-ECHO_REPLAY_TICKS);
+    const plate=this.level.plates.find(plate=>this.onPlate(this.player,plate));
+    // Hand an occupied switch straight to the clone instead of replaying a long approach.
+    if(plate&&this.onPlate(recording.at(-1),plate)){
+      let entry=recording.length-1;
+      while(entry>start&&this.onPlate(recording[entry-1],plate))entry--;
+      start=entry;
+    }
+    return recording.slice(start);
+  }
   commit() {
     if (this.won||this.dead) return {ok:false,reason:this.dead?'dead':'won'};
     if (!this.player.grounded) return {ok:false,reason:'air'};
-    if (this.recording.length < 12) return {ok:false,reason:'empty'};
+    if (this.echoRecording.length < 12) return {ok:false,reason:'empty'};
+    const clip=this.echoClip();
     this.echoes = this.echoes.filter(e => this.echoActive(e));
     if (this.echoes.length >= this.level.limit) return {ok:false,reason:'limit'};
-    this.echoes.push({ id:++this.echoSerial,startTick:this.tick,frames:this.recording.map(frame => ({...frame})), lifetime:this.recording.length-1+ECHO_HOLD_TICKS });
+    const occupied=new Set(this.echoes.map((echo,i)=>echo.slot??i)),slot=Array.from({length:this.level.limit},(_,i)=>i).find(i=>!occupied.has(i));
+    this.echoes.push({ id:++this.echoSerial,slot,startTick:this.tick,frames:clip.map(frame => ({...frame})), lifetime:clip.length-1+ECHO_HOLD_TICKS });
     this.stats.echoes=(this.stats.echoes||0)+1;
     return {ok:true};
   }
   removeEcho() { if (!this.echoes.length) return false; this.echoes.pop(); return true; }
+  resetEcho({clearRecording=false}={}){
+    const clip=this.echoRecording;this.echoFallback=!clearRecording&&clip.length>=12?clip.map(frame=>({...frame})):null;
+    this.echoes=[];this.recording=[snapshot(this.player)];this.recordingStarted=false;this.recordingFull=false;
+  }
   reset() { this.echoes = []; this.seeds.clear(); this.attempts = 1; this.route = null;this.stats={jumps:0,falls:0,echoes:0};this.pressCounts.clear();this.playerPressCounts.clear(); this.restartTake(); }
   kill(reason){
     if(this.dead)return [];
@@ -128,16 +195,22 @@ export class Adventure {
     }
     if(this.skyMessages.length&&!this.memory.firstDeath){this.memory.firstDeath={...this.skyMessages[0]};this.memory.hasWitnessedDeath=true;}
     this.dead=true;this.deathTimer=1.9;this.deathReason=reason;this.attempts++;this.stats.falls++;
+    this.deathBody={...snapshot(this.player),age:0,vx:(reason==='logs'&&this.lastHitDirection?this.lastHitDirection:-this.player.facing)*195,vy:-235,angle:0,opacity:1};
     if(reason==='logs')this.memory.logDeaths=(this.memory.logDeaths||0)+1;
-    this.player.vx=0;this.player.vy=0;return ['death'];
+    this.player.vx=0;this.player.vy=0;this.resetEcho({clearRecording:true});return ['death'];
   }
   updateAttacks(dt){
     if(this.activeIndex===0){this.attacks=[];this.projectiles=[];return false;}
     for(const attack of this.attacks){
       attack.remaining-=dt;if(attack.remaining>0)continue;
-      const origin={x:attack.pile.x+attack.pile.w/2,y:(terrainY(this.level,attack.pile.x+attack.pile.w/2)??510)-38};
-      const p=this.player,target={x:p.x+p.vx*.09,y:p.y-31+p.vy*.04},flight=Math.max(.12,Math.hypot(target.x-origin.x,target.y-origin.y)/attack.trap.speed);
-      for(let i=0;i<attack.trap.shots;i++)this.projectiles.push({x:origin.x,y:origin.y-i*7,vx:(target.x-origin.x)/flight,vy:(target.y-origin.y-850*flight*flight)/flight+(i-(attack.trap.shots-1)/2)*35,angle:0,spin:(i%2?-1:1)*12,len:60,r:12,age:0,opacity:1,hostile:true});
+      const stack=this.logStacks.get(attack.pile.x),p=this.player,target=attack.target||{x:p.x,y:p.y-34};
+      const plate=this.level.plates.find(plate=>attack.pile.requires.includes(plate.id));
+      if(!plate||!logAttackEscape(this.level,plate,attack.pile,attack.trap)){stack.cancelAttack();continue;}
+      for(const [i,pose] of stack.logs.entries()){
+        const flight=Math.max(.10,Math.hypot(target.x-pose.x,target.y-pose.y)/(attack.trap.speed*(.94+(i%5)*.03)));
+        this.projectiles.push({...pose,vx:(target.x-pose.x)/flight,vy:(target.y-pose.y-850*flight*flight)/flight,spin:(i%2?-1:1)*(16+i%7),age:0,opacity:1,hostile:true});
+      }
+      stack.launchAttack();
     }
     this.attacks=this.attacks.filter(attack=>attack.remaining>0);
     let hit=false;
@@ -154,14 +227,19 @@ export class Adventure {
           if(floor!==null&&y+log.r>=floor){blocked=blocked===null?t:Math.min(blocked,t);break;}
         }
       }
-      if(log.hostile===true&&actor!==null&&(blocked===null||actor<blocked)){hit=true;return false;}
+      if(log.hostile===true&&actor!==null&&(blocked===null||actor<blocked)){hit=true;this.lastHitDirection=Math.sign(log.vx);return false;}
       return blocked===null&&log.age<3&&log.y<1000;
     });return hit;
   }
   update(input = {}, dt = STEP) {
     if (this.won) return [];
     dt = Math.max(0, Math.min(dt, 1 / 30));
-    if(this.dead){this.deathTimer-=dt;if(this.deathTimer<=0){this.restartTake();return ['respawn'];}return [];}
+    if(this.dead){
+      this.deathTimer-=dt;const body=this.deathBody;body.age+=dt;
+      if(body.age<.5){body.vy+=1000*dt;body.x+=body.vx*dt;body.y+=body.vy*dt;body.angle+=Math.sign(body.vx)*5*dt;const floor=terrainY(this.level,body.x);if(floor!==null&&body.y>floor){body.y=floor;body.vy=0;}}
+      body.opacity=body.age>=.9?0:body.age>.38?(Math.floor((body.age-.38)/.065)%2?0:1):1;
+      if(this.deathTimer<=0){this.restartTake();return ['respawn'];}return [];
+    }
     const p = this.player, events = [], previousY = p.y, previousX=p.x;
     if(input.left||input.right||input.jumpPressed)this.recordingStarted=true;
     p.landing = Math.max(0, p.landing - dt);
@@ -174,9 +252,10 @@ export class Adventure {
     const direction = Number(Boolean(input.right)) - Number(Boolean(input.left));
     if(this.echoes.length)this.recordingStarted=true;
     if (direction) p.facing = direction;
+    if(p.grounded&&direction&&p.vx*direction<0)p.vx=0;
     p.vx = approach(p.vx, direction * (input.walk ? PHYSICS.walkSpeed : PHYSICS.speed), (direction ? (p.grounded ? 2300 : 1700) : (p.grounded ? 2800 : 550)) * dt);
     p.gait = Math.abs(p.vx)<18?'idle':input.walk?'walk':'run';
-    const solids = this.level.logPiles.filter(g => !this.pileCleared(g));
+    const solids = [...this.level.logPiles.filter(g => !this.pileCleared(g)),...this.level.terraces];
     const followedGround=p.grounded;
     p.x += p.vx * dt;
     for (const solid of solids) if (overlaps(p, solid)) {
@@ -185,18 +264,22 @@ export class Adventure {
       p.vx = 0;
     }
     // Bank edges are real cliffs; a low jump cannot pass through their sides.
-    for(const bank of this.level.ground){
+    for(const bank of groundBanks(this.level)){
       if(p.vx>0&&previousX+PHYSICS.width/2<=bank.x&&p.x+PHYSICS.width/2>bank.x&&p.y>terrainY(this.level,bank.x)+1){p.x=bank.x-PHYSICS.width/2;p.vx=0;}
       if(p.vx<0&&previousX-PHYSICS.width/2>=bank.x+bank.w&&p.x-PHYSICS.width/2<bank.x+bank.w&&p.y>terrainY(this.level,bank.x+bank.w)+1){p.x=bank.x+bank.w+PHYSICS.width/2;p.vx=0;}
     }
     p.x = Math.max(this.cameraFloor+48, Math.min(this.level.width-20,p.x));
     if(p.grounded)p.stride += Math.abs(p.vx) * dt / 145;
-    const surfaceY=terrainY(this.level,p.x),wasGrounded=p.grounded;
-    if(followedGround&&surfaceY!==null&&Math.abs(surfaceY-previousY)<12){p.y=surfaceY;p.vy=0;p.grounded=true;}
+    const surfaceY=terrainY(this.level,p.x),previousSurface=terrainY(this.level,previousX),wasGrounded=p.grounded;
+    const dx=Math.abs(p.x-previousX),drop=surfaceY===null?Infinity:surfaceY-previousY;
+    // Walk gentle grades; leave steep downslopes under gravity instead of snapping down.
+    const walkingSlope=followedGround&&surfaceY!==null&&previousSurface!==null&&Math.abs(previousSurface-previousY)<1&&drop<=dx*1.4+.05;
+    if(walkingSlope){p.y=surfaceY;p.vy=0;p.grounded=true;}
     else{
       p.vy = Math.min(1000, p.vy + PHYSICS.gravity * (p.vy < 0 && !input.jumpHeld ? 2.2 : 1) * dt);
       p.y += p.vy * dt;p.grounded=false;
-      if(surfaceY!==null&&p.y>=surfaceY&&previousY<=surfaceY+12){
+      // Soil is solid regardless of how far a horizontal step penetrated its profile.
+      if(surfaceY!==null&&p.y>=surfaceY){
         if(!wasGrounded&&p.vy>160){p.landing=.16;events.push('land');}
         p.y=surfaceY;p.vy=0;p.grounded=true;
       }
@@ -230,11 +313,14 @@ export class Adventure {
       for(const actor of contacts)if(!before.has(actor)){
         const count=(this.pressCounts.get(plate.id)||0)+1;this.pressCounts.set(plate.id,count);
         if(actor==='player')this.playerPressCounts.set(plate.id,(this.playerPressCounts.get(plate.id)||0)+1);
-        const learned=plate.section>0&&count>1;
+        // Joining an already-held plate is not another physical press.
+        const section=this.sections[plate.section],learned=plate.section>0&&actor==='player'&&before.size===0&&!plate.trapResolved;
+        if(learned){plate.trapResolved=true;if(plate===section.plates[0])section.trapResolved=true;for(const hole of section.holes)if(hole.plateId===plate.id)hole.armed=true;}
         if(learned){
-          const pile=this.level.logPiles.find(pile=>pile.requires.includes(plate.id)),section=this.sections[plate.section];
-          if(pile&&!this.attacks.some(attack=>attack.pile.x===pile.x)&&(section.index===0||this.random()<section.trap.chance)){
-            for(let wave=0;wave<section.trap.waves;wave++)this.attacks.push({pile,remaining:section.trap.windup+wave*.24,trap:section.trap});
+          const pile=this.level.logPiles.find(pile=>pile.requires.includes(plate.id));
+          if(pile&&logAttackEscape(this.level,plate,pile,section.trap)&&!this.attacks.some(attack=>attack.pile.x===pile.x)&&this.random()<section.trap.chance){
+            section.trapFired=true;section.trapSeen=true;plate.trapSeen=true;this.logStacks.get(pile.x).beginAttack();
+            for(let wave=0;wave<section.trap.waves;wave++)this.attacks.push({pile,remaining:section.trap.windup+wave*.24,trap:section.trap,target:{x:p.x,y:p.y-34}});
             events.push('warning');
           }
         }
@@ -246,6 +332,10 @@ export class Adventure {
     for(const pile of this.level.logPiles){
       const stack=this.logStacks.get(pile.x),held=pile.requires.every(id=>this.pressed(id));
       if(stack.update(held,dt,overlaps(p,pile)))events.push('logs');
+    }
+    for(const plate of this.section.plates)if(this.activeIndex>0&&plate.trapResolved&&p.vx< -30&&p.x<plate.retreatX){
+      if(!plate.retreated){plate.retreated=true;this.section.retreated=true;this.memory.retreats=(this.memory.retreats||0)+1;}
+      for(const hole of this.section.holes)if(hole.plateId===plate.id&&hole.armed&&!hole.open){hole.open=true;events.push('collapse');}
     }
     const hit=this.updateAttacks(dt);if(hit)return this.kill('logs');
     if(p.x>=this.section.end&&p.y<560)this.finishSection(events);

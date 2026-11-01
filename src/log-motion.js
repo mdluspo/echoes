@@ -45,8 +45,20 @@ export class LogStack{
     this.pile=pile;this.surface=surface;this.random=random;this.homes=logHomes(pile,surface);this.reset();
   }
   reset(){this.phase='stacked';this.age=0;this.logs=this.homes.map(home=>({...home,vx:0,vy:0,spin:0,built:true,opacity:1,scale:1,sleeping:false}));}
+  beginAttack(){this.reset();this.phase='armed';}
+  cancelAttack(){if(this.phase==='armed'){this.phase='stacked';this.update(true,0);}}
+  launchAttack(){this.phase='scattered';this.age=0;for(const log of this.logs)Object.assign(log,{built:false,spent:true,sleeping:true,opacity:0,vx:0,vy:0});}
   get solid(){return this.phase==='stacked';}
   update(held,dt,occupied=false){
+    if(this.phase==='armed'){
+      this.age+=dt;const lift=1-Math.pow(1-Math.min(1,this.age/.22),3),center=this.pile.x+this.pile.w/2;
+      this.logs.forEach((log,i)=>{
+        const home=this.homes[i];
+        log.x=home.x+(home.x-center)*.1*lift;
+        log.y=home.y-(32+i%4*5)*lift+Math.sin(this.age*7+i)*1.5*lift;
+        log.angle=home.angle+Math.sin(this.age*4+i)*.07*lift;
+      });return false;
+    }
     let opened=false;
     if(held&&this.phase!=='scattered'){
       opened=true;this.phase='scattered';this.age=0;
@@ -54,7 +66,7 @@ export class LogStack{
         // Mix skyward rockets, downward throws and lower tumbling arcs.
         log.vx=(i%2?-1:1)*(450+this.random()*850);
         log.vy=i%4===0?-1450-this.random()*600:i%4===1?180+this.random()*420:-450-this.random()*700;
-        log.spin=(this.random()<.5?-1:1)*(8+this.random()*17);log.bounces=0;log.built=false;log.sleeping=false;log.opacity=1;log.scale=1;
+        log.spin=(this.random()<.5?-1:1)*(8+this.random()*17);log.bounces=0;log.spent=false;log.built=false;log.sleeping=false;log.opacity=1;log.scale=1;
       });
     }else if(!held&&this.phase==='scattered'){
       this.phase='building';this.age=0;
@@ -74,8 +86,8 @@ export class LogStack{
       this.logs.forEach((log,i)=>{
         const elapsed=this.age-i*interval;
         if(elapsed<0)return;
-        if(elapsed<.035&&!log.built){log.opacity=1-elapsed/.035;return;}
-        if(!log.built)Object.assign(log,this.homes[i],{built:true,vx:0,vy:0,spin:0,opacity:1,sleeping:false});
+        if(elapsed<.035&&!log.built){log.opacity=log.spent?0:1-elapsed/.035;return;}
+        if(!log.built)Object.assign(log,this.homes[i],{built:true,spent:false,vx:0,vy:0,spin:0,opacity:1,sleeping:false});
         const pop=Math.max(0,Math.min(1,(elapsed-.035)/.055));
         log.y=this.homes[i].y-(1-pop)*8;log.scale=1+Math.sin(pop*Math.PI)*.06;
       });

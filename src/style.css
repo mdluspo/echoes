@@ -39,4 +39,7 @@ body,.paper-dialog{background:#fff;color:#111}.game::after{border-color:#1112;bo
 .icon-button,.echo-button,.touch-walk button,.jump-button,.primary-button,.room-picker button{background:#fff;color:#111;border-color:#111;box-shadow:none}.echo-button.ready,.touch-walk button.held,.jump-button.held{background:#111;color:#fff}.memory-meter>i{border-color:#111}.memory-meter b{background:#111}.paper-dialog{border-color:#111;box-shadow:none}.paper-dialog::backdrop{background:#ffffffdf}.menu-button{border-color:#111}.hint-text{background:#fff;border-color:#111}.room-picker button[aria-current]{background:#fff;color:#111;border-color:#111;text-decoration:underline;text-underline-offset:4px}.primary-button{background:#fff;color:#111}
 /* Keep the small paper controls readable over the outdoor linework. */
 .echo-button:disabled{opacity:1;background:#fff;color:#111;border-style:dashed}.echo-button:disabled svg,.echo-button:disabled kbd{opacity:.5}.memory-meter{background:#fff;width:max-content;margin-left:auto}.cue:not(.quiet){background:#fff}
+.echo-control{display:flex;align-items:flex-end;gap:8px}.vanish-button{transform:rotate(.4deg)}.vanish-button:disabled{opacity:.45;border-style:solid}
+.echo-create{display:grid;gap:7px}.echo-slots{display:flex;gap:5px;transform:rotate(-.4deg)}.echo-slots i{display:block;flex:1;height:7px;border:1.5px solid #111;border-radius:1px 2px 1px 1px;background:#fff}.echo-slots i.available{background:#111}
+#echo-button{background:#fff;color:#111;border-style:solid}#echo-button.ready{background:#111;color:#fff}
 
