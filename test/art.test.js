@@ -44,7 +44,7 @@ test('the grassy rises are continuous walkable ground',()=>{
     assert.equal(game.player.y,terrainY(game.level,game.player.x));
   }
   assert.ok(game.player.y<400);
-  assert.equal(game.level.platforms,undefined);
+  assert.ok(game.level.platforms.every(platform=>platform.profile&&platform.section===4));
 });
 
 test('sprite cropping excludes detached pixels from the row above without trimming the pose',()=>{

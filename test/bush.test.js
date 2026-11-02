@@ -4,21 +4,37 @@ import { Adventure, createLevel, terrainY } from '../src/engine.js';
 
 const frames=(game,count,input={})=>{for(let i=0;i<count;i++)game.update(input);};
 const place=(game,x,facing=1)=>Object.assign(game.player,{x,y:terrainY(game.level,x),vx:0,vy:0,grounded:true,facing});
-function encounter(){const game=new Adventure(4),bush=game.section.bushes.find(b=>!b.berries);game.section.fences[1].broken=true;place(game,bush.x-240);return {game,bush};}
+function encounter(){const game=new Adventure(4),bush=game.section.bushes.find(b=>!b.berries);game.section.fences[1].broken=true;place(game,bush.x+140,-1);game.update();place(game,bush.x-240);return {game,bush};}
 
-test('earlier trails establish harmless berry bushes; the only predator appears halfway through trail five',()=>{
+test('earlier trails establish safe bushes; the predator has room before the final creek and third bell',()=>{
   for(let index=0;index<4;index++){
     const section=createLevel(index);assert.ok(section.bushes.length>=3);assert.ok(section.bushes.every(b=>b.berries));
     const game=new Adventure(index);
     for(const bush of game.section.bushes){place(game,bush.x);frames(game,90);assert.equal(game.dead,false);assert.equal(bush.x,bush.homeX);assert.equal(bush.open,0);}
   }
-  const section=createLevel(4),predators=section.bushes.filter(b=>!b.berries);assert.equal(predators.length,1);assert.equal(predators[0].x-section.start,(section.end-section.start)/2);
+  for(let run=0;run<3;run++){
+    const section=createLevel(4),predators=section.bushes.filter(b=>!b.berries),bell=section.plates.filter(p=>p.bell).at(-1);
+    assert.equal(predators.length,1);assert.equal(predators[0].x,bell.x-1250);assert.ok(predators[0].x>section.logPiles[1].x+section.logPiles[1].w);assert.ok(predators[0].x<section.ground[2].x);assert.equal(terrainY(section,predators[0].x),510);
+  }
 });
 
 test('looking at the bush freezes it and looking away lets it close the distance',()=>{
   const {game,bush}=encounter(),home=bush.x;frames(game,25);assert.equal(bush.x,home);assert.equal(bush.phase,'frozen');
   game.player.facing=-1;frames(game,20);assert.ok(bush.x<home-90);assert.equal(bush.phase,'stalking');
   const x=bush.x;game.player.facing=1;frames(game,20);assert.equal(bush.x,x);assert.equal(game.dead,false);
+});
+
+test('the predator stays harmless until the hamster passes it',()=>{
+  const game=new Adventure(4),bush=game.section.bushes.find(b=>!b.berries),home=bush.x;
+  for(const distance of [-200,-60,0,50]){place(game,home+distance);frames(game,25);assert.equal(bush.activated,false);assert.equal(bush.x,home);assert.equal(bush.phase,'dormant');assert.equal(game.dead,false);}
+  place(game,home+140,-1);game.update();assert.equal(bush.activated,true);assert.equal(bush.phase,'frozen');
+  game.player.facing=1;frames(game,5);assert.ok(bush.x>home);
+});
+
+test('respawning restores the predator before the third bell even after it chased beyond it',()=>{
+  const {game,bush}=encounter(),bell=game.section.plates.filter(p=>p.bell).at(-1);
+  bush.x=bell.x+200;game.kill('fall');for(let i=0;i<130&&game.dead;i++)game.update();
+  assert.equal(game.dead,false);assert.equal(bush.x,bell.x-1250);assert.equal(bush.activated,false);assert.equal(bush.phase,'dormant');
 });
 
 test('an Echo watching the bush protects a player facing away; Vanish releases it immediately',()=>{
@@ -49,9 +65,10 @@ test('a quick high jump escapes the opening mouth and its bite never reaches a d
   place(game,bush.x+200);frames(game,15);assert.equal(game.dead,false);
 });
 
-test('the predator respects solid log piles and cannot chase across the creek out of its encounter',()=>{
-  const {game,bush}=encounter(),start=game.section.start;bush.x=start+3510;place(game,start+3960);
-  frames(game,25);assert.ok(bush.x<start+3540);assert.equal(game.dead,false);
-  bush.x=start+3990;place(game,start+4500);frames(game,90);assert.equal(bush.x,bush.maxX);assert.equal(game.dead,false);assert.equal(terrainY(game.level,bush.x),510);
+test('the predator jumps across the creek to follow the hamster into the next encounter',()=>{
+  const {game,bush}=encounter(),start=game.section.start;Object.assign(bush,{x:start+5380,y:510,grounded:true});place(game,start+6000);
+  let airborne=false;for(let i=0;i<70;i++){game.update();airborne||=!bush.grounded;assert.equal(game.dead,false);if(airborne&&bush.grounded&&bush.x>start+5610)break;}
+  assert.ok(airborne);assert.ok(bush.jumps>0);assert.ok(bush.x>start+5610);assert.equal(bush.grounded,true);assert.equal(bush.y,terrainY(game.level,bush.x));
   game.restartTake();assert.equal(bush.x,bush.homeX);assert.equal(bush.phase,'dormant');assert.equal(bush.reveal,0);
+  assert.equal(bush.activated,false);
 });

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { Adventure, STEP, terrainY } from '../src/engine.js';
+import { Adventure, PHYSICS, STEP, terrainY } from '../src/engine.js';
 import { stepGeese } from '../src/goose.js';
 
 const place=(game,x)=>Object.assign(game.player,{x,y:terrainY(game.level,x),vx:0,vy:0,grounded:true});
@@ -12,13 +12,21 @@ test('the flag switch sits at the far end beyond the snare and every earlier puz
   assert.ok(section.logPiles.every(pile=>pile.x+pile.w<plate.x));
 });
 
-test('a bell warns before a charge, captures its target once, and ignores extra rings while busy',()=>{
+test('every released and freshly pressed bell rearms its goose, even during a charge',()=>{
   const game=new Adventure(4),plate=game.section.plates[0],goose=game.level.geese[0],home=goose.x;
   place(game,plate.x);assert.ok(game.update().includes('honk'));assert.equal(goose.phase,'warning');
-  const target=goose.targetX;place(game,plate.x+90);game.update();place(game,plate.x);assert.ok(!game.update().includes('honk'));
+  const target=goose.targetX;place(game,plate.x+90);game.update();place(game,plate.x);assert.ok(game.update().includes('honk'));
   assert.equal(goose.targetX,target);assert.equal(goose.x,home);
   for(let i=0;i<50&&goose.phase==='warning';i++)game.update();assert.equal(goose.phase,'charge');
   place(game,plate.x+300);for(let i=0;i<4;i++)game.update();assert.equal(goose.targetX,target);assert.equal(goose.direction,-1);assert.ok(goose.x<home);
+  place(game,plate.x);assert.ok(game.update().includes('honk'));assert.equal(goose.phase,'warning');
+});
+
+test('joining a bell held by an Echo never rings it again',()=>{
+  const game=new Adventure(4),plate=game.section.plates[0];
+  place(game,plate.x-100);game.echoes=[hold(game,plate)];assert.ok(game.update().includes('honk'));
+  place(game,plate.x);assert.ok(!game.update().includes('honk'));
+  place(game,plate.x-100);assert.ok(!game.update().includes('honk'));
 });
 
 test('an Echo rings the bell and clears logs while real raised ground stops the charging goose',()=>{
@@ -40,11 +48,34 @@ test('a direct goose charge is lethal, but a hamster above its actual head is sa
   }
 });
 
-test('the final goose puzzle needs both Echoes to keep its log pile scattered',()=>{
-  const game=new Adventure(4),pile=game.section.logPiles[2],plates=pile.requires.map(id=>game.level.plates.find(p=>p.id===id));
-  place(game,game.section.start+4700);game.echoes=[hold(game,plates[0])];game.update();assert.equal(game.pileCleared(pile),false);
-  game.echoes.push(hold(game,plates[1],2));game.update();assert.equal(game.pileCleared(pile),true);assert.equal(game.level.geese[2].phase,'warning');
+test('the final bell needs one Echo, leaving the other free to watch the bush',()=>{
+  const game=new Adventure(4),pile=game.section.logPiles[2],plate=game.level.plates.find(p=>p.id===pile.requires[0]);
+  assert.equal(pile.requires.length,1);assert.equal(game.section.plates.filter(p=>p.x>game.section.start+5610).length,1);
+  place(game,game.section.start+6040);game.echoes=[hold(game,plate)];game.update();assert.equal(game.pileCleared(pile),true);assert.equal(game.level.geese[2].phase,'warning');
+  assert.equal(game.level.limit-game.echoes.length,1);
   game.resetEcho();game.update();assert.equal(game.logStacks.get(pile.x).phase,'building');
+});
+
+test('the second goose closes into view before the hamster reaches its fleeing cover',()=>{
+  const game=new Adventure(4),goose=game.section.geese[1],plate=game.section.plates[1],mound=game.section.platforms[0];
+  place(game,plate.x);game.player.vx=-PHYSICS.speed;game.echoes=[hold(game,plate)];game.update({left:true});
+  let closeAt=null;
+  for(let tick=0;tick<160;tick++){
+    game.update({left:true});assert.equal(game.dead,false);
+    if(closeAt===null&&goose.x-game.player.x<220)closeAt=mound.elapsed;
+  }
+  assert.ok(closeAt!==null&&closeAt<2,`goose should close up early, got ${closeAt}`);
+  assert.ok(goose.x-game.player.x>185&&goose.x-game.player.x<210);
+  assert.equal(goose.speed,PHYSICS.speed);assert.equal(mound.speed,PHYSICS.speed);
+});
+
+test('the close chase still leaves enough room to jump over the goose',()=>{
+  const game=new Adventure(4),goose=game.section.geese[1],x=game.section.start+3600;
+  place(game,x);game.player.vx=PHYSICS.speed;
+  Object.assign(goose,{x:x+190,y:510,phase:'charge',chargeY:510,direction:-1,targetX:x});
+  game.update({right:true,jumpPressed:true,jumpHeld:true});
+  let crossed=false;for(let tick=0;tick<25;tick++){game.update({right:true,jumpHeld:true});assert.equal(game.dead,false);crossed||=game.player.x>goose.x;}
+  assert.ok(crossed);
 });
 
 test('tall fences block walking and jumping until a goose physically breaks them',()=>{

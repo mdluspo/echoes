@@ -42,4 +42,5 @@ body,.paper-dialog{background:#fff;color:#111}.game::after{border-color:#1112;bo
 .echo-control{display:flex;align-items:flex-end;gap:8px}.vanish-button{transform:rotate(.4deg)}.vanish-button:disabled{opacity:.45;border-style:solid}
 .echo-create{display:grid;gap:7px}.echo-slots{display:flex;gap:5px;transform:rotate(-.4deg)}.echo-slots i{display:block;flex:1;height:7px;border:1.5px solid #111;border-radius:1px 2px 1px 1px;background:#fff}.echo-slots i.available{background:#111}
 #echo-button{background:#fff;color:#111;border-style:solid}#echo-button.ready{background:#111;color:#fff}
+.level-hint{border-bottom:1px dashed #aaa;padding:13px 0}.level-hint summary{cursor:pointer;font-size:18px}.level-hint .hint-text{border:0;padding:0;margin:12px 0 3px}.keyboard-help{line-height:1.9}
 

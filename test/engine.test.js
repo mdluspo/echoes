@@ -177,18 +177,27 @@ function finishFourthSection(game){
 }
 test('the fourth trail teaches two linked crossings before trapping and catching the runaway flag',()=>{finishFourthSection(new Adventure(3));});
 
+test('respawn folds the linked bridges and restores the runaway flag with no pending attacks',()=>{
+  const game=new Adventure(3),flag=game.section.exit;
+  for(const bridge of game.section.bridges)bridge.progress=1;
+  Object.assign(flag,{x:flag.maxX,running:false,caught:true});
+  game.kill('fall');for(let tick=0;tick<130&&game.dead;tick++)game.update();
+  assert.equal(game.dead,false);assert.ok(game.section.bridges.every(bridge=>bridge.progress===0));
+  assert.equal(flag.x,flag.homeX);assert.equal(flag.caught,false);assert.equal(flag.running,false);
+  assert.equal(game.projectiles.length,0);assert.equal(game.attacks.length,0);assert.equal(game.echoes.length,0);
+});
+
 function finishFifthSection(game){
   const fifth=game.section,start=fifth.start;
-  for(const [i,base]of [0,2050,4270].entries()){
-    walkTo(game,start+base+550);game.resetEcho();walkTo(game,start+base+570);frames(game,15);
-    if(i===2)assert.equal(game.commit().ok,true);
+  for(const [i,base]of [0,2720,5610].entries()){
+    walkTo(game,start+base+550);if(i!==2)game.resetEcho();walkTo(game,start+base+570);frames(game,15);
     walkTo(game,start+base+650);assert.equal(game.commit().ok,true);
-    walkTo(game,start+base+430);
-    for(let tick=0;tick<240&&(!fifth.fences[i].broken||['warning','charge'].includes(fifth.geese[i].phase));tick++){game.update();assert.equal(game.dead,false,'raised grass must protect the hamster from the goose');}
+    walkTo(game,start+(i===1?2295:base+430));
+    for(let tick=0;tick<600&&(!fifth.fences[i].broken||['warning','charge'].includes(fifth.geese[i].phase));tick++){game.update();assert.equal(game.dead,false,'raised grass must protect the hamster from the goose');}
     assert.equal(fifth.fences[i].broken,true);assert.ok(!['warning','charge'].includes(fifth.geese[i].phase));
-    if(i===1){walkTo(game,start+3190);assert.equal(game.commit().ok,true);jumpTo(game,start+3410);}
     runUntil(game,start+base+1800);
-    if(i<2){runUntil(game,start+(i===0?1840:4060));jumpTo(game,start+(i===0?2110:4330));}
+    if(i===1){const bush=fifth.bushes.find(b=>!b.berries);game.resetEcho();walkTo(game,bush.homeX-110);assert.equal(game.commit().ok,true);jumpTo(game,bush.homeX+110);}
+    if(i<2){runUntil(game,start+(i===0?1840:5400));jumpTo(game,start+(i===0?2110:5670));}
   }
   runUntil(game,fifth.end);assert.equal(game.won,true);
 }

@@ -1,10 +1,10 @@
-/** Bells capture a target once; charging geese never steer after that warning. */
+/** Every fresh bell press rearms its goose; a held plate never rings again. */
 export function ringBell(geese,plate,actor){
   if(!plate.bell)return false;
   plate.ring=1;
-  const goose=geese.find(goose=>goose.bellId===plate.id&&goose.phase==='idle');
+  const goose=geese.find(goose=>goose.bellId===plate.id);
   if(!goose)return false;
-  Object.assign(goose,{phase:'warning',timer:goose.windup,targetX:actor.x,direction:Math.sign(actor.x-goose.x)||-1});
+  Object.assign(goose,{phase:'warning',timer:goose.windup,targetX:actor.x,direction:Math.sign(actor.x-goose.x)||-1,impact:null});
   return true;
 }
 
@@ -32,10 +32,14 @@ export function stepGeese(level,dt,surface,player=null){
     if(goose.phase==='warning'){
       goose.timer-=dt;if(goose.timer<=0){goose.phase='charge';goose.chargeY=goose.y;}
     }else if(goose.phase==='charge'){
-      const from=goose.x,to=from+goose.direction*goose.speed*dt,steps=Math.max(1,Math.ceil(Math.abs(to-from)/4));
+      if(goose.chase&&player){goose.targetX=player.x;if(Math.abs(player.x-goose.x)>14)goose.direction=Math.sign(player.x-goose.x);}
+      // Catch up into view, then match a running hamster once the chase is close.
+      const speed=goose.chase&&player&&Math.abs(player.x-goose.x)>200?(goose.approachSpeed||goose.speed):goose.speed;
+      const from=goose.x,to=from+goose.direction*speed*dt,steps=Math.max(1,Math.ceil(Math.abs(to-from)/4));
       for(let i=1;i<=steps;i++){
         const x=from+(to-from)*i/steps,floor=surface(x+goose.direction*30);
-        if(floor===null||floor<goose.chargeY-22||goose.direction*(x-goose.targetX)>160){goose.phase='stunned';goose.timer=1.15;break;}
+        const platform=(level.platforms||[]).find(platform=>!platform.profile&&touches(goose,x,{x:platform.x,y:platform.y,w:platform.w,h:platform.h}));
+        if(platform||floor===null||floor<goose.chargeY-22||!goose.chase&&goose.direction*(x-goose.targetX)>160){goose.phase='stunned';goose.timer=1.15;goose.impact=platform?'platform':floor===null||floor<goose.chargeY-22?'ground':'overshoot';break;}
         goose.x=x;
         for(const fence of level.fences||[])if(!fence.broken&&goose.x+42>fence.x&&goose.x-42<fence.x+fence.w)breakFence(fence,goose.direction);
         if(player&&touches(goose,goose.x,{x:player.x-17,y:player.y-61,w:34,h:61}))hit=true;

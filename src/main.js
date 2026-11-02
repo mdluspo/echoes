@@ -1,5 +1,6 @@
 import { Adventure, CHAPTERS, STEP, SECTION_LENGTH } from './engine.js';
 import { Illustrator, loadArtwork } from './art.js';
+import { TRAIL_HINTS } from './hints.js';
 
 const $=id=>document.getElementById(id),SAVE_KEY='echoes.hamster-adventure.v2';
 const fresh=()=>({completed:[],lastRoom:0,memory:{},sound:false,motion:true,settingsVersion:2,sectionLength:SECTION_LENGTH});
@@ -38,13 +39,13 @@ function restart(){
   clearTimeout(winTimer);closeDialogs();clearInput();game.restartTake();painter.rewind();temporaryCue='';startedAt=performance.now();renderUI();focusGame();
 }
 function restartAll(){
-  clearTimeout(winTimer);game=new Adventure();save.completed=[];save.lastRoom=0;save.memory={};persist();closeDialogs();clearInput();painter.rewind();temporaryCue='';cueUntil=0;startedAt=performance.now();pickerSignature='';$('hint-text').hidden=true;renderUI();focusGame();
+  clearTimeout(winTimer);game=new Adventure();save.completed=[];save.lastRoom=0;save.memory={};persist();closeDialogs();clearInput();painter.rewind();temporaryCue='';cueUntil=0;startedAt=performance.now();pickerSignature='';renderUI();focusGame();
 }
 function resetEcho(){if(game.dead||game.won)return;game.resetEcho();renderUI();focusGame();}
 function loadRoom(index){
   let unlocked=0;while(unlocked<CHAPTERS.length-1&&save.completed.includes(unlocked))unlocked++;
   if(!Number.isInteger(index)||index<0||index>unlocked)return;
-  clearTimeout(winTimer);closeDialogs();clearInput();game=new Adventure(index,save.memory);save.lastRoom=index;persist();painter.rewind();startedAt=performance.now();temporaryCue='';$('hint-text').hidden=true;renderUI();focusGame();
+  clearTimeout(winTimer);closeDialogs();clearInput();game=new Adventure(index,save.memory);save.lastRoom=index;persist();painter.rewind();startedAt=performance.now();temporaryCue='';renderUI();focusGame();
   if(index===2)say('The grove remembers. Find a new way around.',5000);
 }
 function leaveEcho(){
@@ -91,27 +92,19 @@ function renderUI(){
 }
 
 $('menu-button').addEventListener('click',()=>openDialog('menu-dialog'));
-$('help-button').addEventListener('click',()=>openDialog('help-dialog'));
+$('help-button').addEventListener('click',()=>{
+  $('level-hints').replaceChildren(...TRAIL_HINTS[game.activeIndex].map((hint,index)=>{
+    const item=document.createElement('details'),label=document.createElement('summary'),copy=document.createElement('p');
+    item.className='level-hint';label.textContent=`Hint ${index+1}`;copy.className='hint-text';copy.textContent=hint;
+    item.append(label,copy);return item;
+  }));
+  openDialog('help-dialog');
+});
 $('echo-button').addEventListener('click',leaveEcho);
 $('vanish-echo-button').addEventListener('click',resetEcho);
 $('restart-all-button').addEventListener('click',restartAll);
 $('sound-button').addEventListener('click',()=>{save.sound=!save.sound;persist();renderUI();if(save.sound)sound('seed');});
 $('room-picker').addEventListener('click',event=>{const button=event.target.closest('[data-room]');if(button&&!button.disabled)loadRoom(Number(button.dataset.room));});
-$('hint-button').addEventListener('click',()=>{
-  if(game.activeIndex===4){
-    const x=game.player.x-game.section.start;
-    if(x>2800&&x<4100){$('hint-text').hidden=false;$('hint-text').textContent='The berryless bush moves when nobody faces it. Leave an Echo looking toward it, then jump over it. Keep your bell Echo holding the log pile open. Getting close wakes its mouth, even if you are watching.';return;}
-    $('hint-text').hidden=false;$('hint-text').textContent=x<4270?'A bell wakes its goose. Leave an Echo on the bell plate, retreat onto the grassy rise, and let the goose charge through the tall fence. It cannot turn during its charge. Cross after it passes; your Echo also keeps the logs scattered.':'The last log pile needs both marked plates. Leave one Echo on the first, then a second on the bell plate. Get back onto the grassy rise before the goose charges. Cross the broken fence and scattered logs while both memories hold.';return;
-  }
-  if(game.activeIndex===3){
-    const x=game.player.x-game.section.start;
-    $('hint-text').hidden=false;$('hint-text').textContent=x<1360?'Each bridge needs two switches held together. Record an Echo on each marked switch, then cross once the bridge is level.':x<2800?'The first log pile comes back. Leave an Echo on the switch, then run forward along the flat ground into the shed. The logs return three seconds after leaving view. Stay sheltered until all returning logs pass, then reach the other bridge switch.':x<4140?'The old log trick is back. Leave an Echo on the high switch, retreat left behind the earth ledge, and stay hidden through the replayed volley. Return after all killer logs have passed.':x<5000?'This flat switch scatters harmless logs. Record an Echo here and let it hold the pile open. A rebuilding log must visibly appear on top of you before it can crush you.':'That flag has legs. Follow it to the far end of the trail, then leave an Echo on the five-stroke switch beyond the rope snare. Head back to catch the tangled flag.';return;
-  }
-  const puzzle=Math.max(0,game.section.logPiles.findIndex(p=>game.player.x<p.x+p.w));
-  const safe=game.activeIndex===0;
-  const hints=[safe?'The meadow has no log attacks. Step on the striped plate, press E, then jump across the creek while your Echo replays the press.':game.activeIndex===2?'The retreat ground can collapse. Jump back across the hole, and stay hidden until your Echo has pressed the switch and its volley has passed.':'Jump from the grassy rise onto the high switch and leave an Echo. Turn left and drop behind the raised ground. Wait for your Echo to replay the press and for all killer logs to pass before returning.', 'The flat switch only scatters harmless logs. Use a free Echo slot here, then cross while your Echo holds the plate. Q clears both old clips if you need room.',safe?'Make a fresh Echo on the high perch, then cross the wide creek while it keeps the final pile scattered.':'Make an Echo on the high perch and retreat left behind the raised bank. Your Echo can trigger another volley; stay hidden until it passes, then cross the wide creek.'];
-  $('hint-text').hidden=false;$('hint-text').textContent=hints[puzzle];
-});
 $('next-button').addEventListener('click',restartAll);
 $('replay-button').addEventListener('click',()=>loadRoom(game.level.index));
 for(const button of document.querySelectorAll('[data-close]'))button.addEventListener('click',()=>$(button.dataset.close).close());

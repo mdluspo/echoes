@@ -1,6 +1,7 @@
 import { LogStack, stepDebris } from './log-motion.js';
 import { ringBell, stepGeese } from './goose.js';
 import { decorateBushes, stepBushes } from './bush.js';
+import { startRunawayPlatform, stepRunawayPlatforms } from './runaway-platform.js';
 /** Deterministic side-view physics and recordings. Rendering and input live elsewhere. */
 export const STEP = 1 / 60;
 export const ECHO_SECONDS = 3;
@@ -14,7 +15,7 @@ export const CHAPTERS = [
   { name:'Over the creek', region:'Willow Creek', limit:2 },
   { name:'The path remembers', region:'The Remembering Grove', limit:2 },
   { name:'Not so fast', region:'The Contrary Crossing', limit:2, length:6000, holdSeconds:16 },
-  { name:'Mind the goose', region:'The Honking Meadow', limit:2, length:6600, holdSeconds:16 },
+  { name:'Mind the goose', region:'The Honking Meadow', limit:2, length:7940, holdSeconds:22 },
 ];
 const approach = (value, target, amount) => value < target ? Math.min(target, value + amount) : Math.max(target, value - amount);
 const overlaps = (a, b) => a.x + PHYSICS.width / 2 > b.x && a.x - PHYSICS.width / 2 < b.x + b.w && a.y > b.y && a.y - PHYSICS.height < b.y + b.h;
@@ -114,14 +115,15 @@ export function createLevel(index,memory={}){
       trap:{enabled:true,chance:.6,speed:1800,windup:.5,shots:24,waves:1},retired:false});
   }
   if(index===4){
-    const shift=items=>items.map(item=>({...item,x:item.x+start,section:index})),bases=[0,2050,4270];
+    const shift=items=>items.map(item=>({...item,x:item.x+start,section:index})),bases=[0,2720,5610];
     return decorateBushes({...CHAPTERS[index],index,start,end,width:end,spawn:{x:start+100,y:510},
-      ground:shift([{x:0,y:510,w:1880,h:700},{x:2050,y:510,w:2050,h:700},{x:4270,y:510,w:2630,h:700}]),
-      mounds:shift(bases.map(x=>({x:x+380,y:410,w:100,rampRight:70}))),terraces:[],holes:[],thorns:[],seeds:[],bridges:[],sheds:[],
-      plates:shift([{id:'E',x:650,y:510,bell:true},{id:'E2',x:2700,y:510,bell:true},{id:'E3',x:4840,y:510},{id:'E4',x:4920,y:510,bell:true}]),
-      logPiles:shift(bases.map((x,i)=>({x:x+1520,y:288,w:260,h:222,requires:i===2?['E3','E4']:[i?'E2':'E']}))),
+      ground:shift([{x:0,y:510,w:1880,h:700},{x:2050,y:510,w:3390,h:700},{x:5610,y:510,w:2630,h:700}]),
+      mounds:shift(bases.filter((_,i)=>i!==1).map(x=>({x:x+380,y:410,w:100,rampRight:70}))),terraces:[],holes:[],thorns:[],seeds:[],bridges:[],sheds:[],
+      platforms:shift([{x:3100,homeX:start+3100,y:410,w:100,h:100,groundY:510,rampLeft:120,rampRight:70,profile:true,requires:'E2',speed:PHYSICS.speed,direction:-1,duration:3,elapsed:0,running:false,triggered:false,stride:0}]),
+      plates:shift([{id:'E',x:650,y:510,bell:true},{id:'E2',x:3370,y:510,bell:true},{id:'E3',x:6260,y:510,bell:true}]),
+      logPiles:shift(bases.map((x,i)=>({x:x+1520,y:288,w:260,h:222,requires:[['E','E2','E3'][i]]}))),
       fences:shift(bases.map(x=>({x:x+1130,y:510,w:72,h:190,broken:false,debris:[]}))),
-      geese:bases.map((x,i)=>({x:start+x+1400,homeX:start+x+1400,y:510,bellId:['E','E2','E4'][i],section:index,phase:'idle',direction:-1,stride:0,timer:0,windup:.75-i*.1,speed:740+i*90})),
+      geese:bases.map((x,i)=>({x:start+x+1400,homeX:start+x+1400,y:510,bellId:['E','E2','E3'][i],section:index,phase:'idle',direction:-1,stride:0,timer:0,windup:i===1?.35:.75-i*.1,speed:i===1?PHYSICS.speed:740+i*90,approachSpeed:i===1?PHYSICS.speed*2.4:null,chase:i===1})),
       exit:{x:end,y:510},trap:{enabled:false,chance:0,speed:1800,windup:.5,shots:0,waves:0},retired:false});
   }
   const gaps=index===0?[740,900,1530,1680]:[780,920,1600,1740];
@@ -155,7 +157,7 @@ export function terrainY(level,x){
   const bank=level.ground.find(g=>x>=g.x&&x<=g.x+g.w);
   if(!bank)return null;
   let y=bank.y;
-  for(const mound of level.mounds){
+  for(const mound of [...level.mounds,...(level.platforms||[]).filter(p=>p.profile)]){
     if(mound.x<bank.x||mound.x>=bank.x+bank.w)continue;
     const ramp=mound.ramp??120,leftRamp=mound.rampLeft??ramp,rightRamp=mound.rampRight??ramp,start=mound.x-leftRamp,end=mound.x+mound.w+rightRamp;
     if(x<start||x>end)continue;
@@ -216,7 +218,7 @@ export class Adventure {
     if(visible.length!==this.skyMessages.length){this.skyMessages=visible;this.memory.firstDeathDismissed=true;}
   }
   syncWorld(){
-    for(const key of ['ground','mounds','plates','logPiles','thorns','seeds','terraces','holes','bridges','sheds','geese','fences','bushes'])this.level[key]=this.sections.filter(s=>!s.retired).flatMap(s=>s[key]||[]);
+    for(const key of ['ground','mounds','plates','logPiles','thorns','seeds','terraces','holes','bridges','sheds','geese','fences','bushes','platforms'])this.level[key]=this.sections.filter(s=>!s.retired).flatMap(s=>s[key]||[]);
     this.level.ground=this.level.ground.reduce((banks,bank)=>{const last=banks.at(-1);if(last&&last.x+last.w===bank.x&&last.y===bank.y)last.w+=bank.w;else banks.push({...bank});return banks;},[]);
     for(const bush of this.level.bushes)if(!Number.isFinite(bush.y))bush.y=terrainY(this.level,bush.x)??510;
     Object.assign(this.level,{index:this.activeIndex,region:this.section.region,limit:this.section.limit,spawn:this.section.spawn,exit:this.sections.at(-1).exit});
@@ -240,7 +242,8 @@ export class Adventure {
     this.syncWorld();this.recording=[snapshot(this.player)];this.echoFallback=null;this.recordingStarted=false;this.lastPressed=new Set();this.lastPlateActors=new Map();events.push('section');
   }
   restartTake({preserveWorld=false}={}) {
-    if(!preserveWorld)for(const bush of this.level.bushes)Object.assign(bush,{x:bush.homeX,y:terrainY(this.level,bush.homeX),phase:bush.berries?'idle':'dormant',age:0,open:0,reveal:0,stride:0,facing:1});
+    for(const bush of this.level.bushes){bush.activated=false;if(!preserveWorld||!bush.berries)Object.assign(bush,{x:bush.homeX,y:terrainY(this.level,bush.homeX),phase:bush.berries?'idle':'dormant',age:0,open:0,reveal:0,stride:0,facing:1,vy:0,grounded:true,jumpCooldown:0});}
+    if(!preserveWorld)for(const platform of this.level.platforms)Object.assign(platform,{x:platform.homeX,elapsed:0,running:false,triggered:false,stride:0});
     if(!preserveWorld){for(const goose of this.level.geese)Object.assign(goose,{x:goose.homeX,y:terrainY(this.level,goose.homeX),phase:'idle',direction:-1,stride:0,timer:0});for(const fence of this.level.fences)Object.assign(fence,{broken:false,debris:[]});for(const plate of this.level.plates)if(plate.bell)plate.ring=0;}
     if(!preserveWorld){for(const stack of this.logStacks.values())stack.reset();for(const section of this.sections){for(const bridge of section.bridges)bridge.progress=0;if(section.exit.runaway)Object.assign(section.exit,{x:section.exit.homeX,direction:1,running:false,caught:false,stride:0});}}
     this.player = { ...this.level.spawn, vx:0, vy:0, grounded:true, facing:1, landing:0, stride:0, gait:'idle' };
@@ -304,15 +307,16 @@ export class Adventure {
     this.player.vx=0;this.player.vy=0;this.resetEcho({clearRecording:true});return ['death'];
   }
   updateBushes(dt,damage=!this.dead){
-    return stepBushes(this.level.bushes,this.actors,damage?this.player:null,dt,x=>terrainY(this.level,x),(x,bush,direction)=>
-      this.level.fences.some(f=>!f.broken&&x+44>f.x&&x-44<f.x+f.w)||this.level.logPiles.some(pile=>{
-        const stack=this.logStacks.get(pile.x);return stack.solid&&stack.logs.some(log=>log.built&&log.opacity>0&&logTouchesActor(log,{x:x+direction*30,y:bush.y}));
-      }));
+    return stepBushes(this.level.bushes,this.actors,damage?this.player:null,dt,x=>{
+      const ground=terrainY(this.level,x);let floor=ground;
+      for(const solid of [...this.level.platforms.filter(p=>!p.profile),...this.level.fences.filter(f=>!f.broken).map(f=>({x:f.x,w:f.w,y:f.y-f.h}))])if(x>=solid.x&&x<=solid.x+solid.w)floor=Math.min(floor??Infinity,solid.y);
+      for(const pile of this.level.logPiles){const stack=this.logStacks.get(pile.x);if(stack.solid)for(const log of stack.logs)if(log.built&&log.opacity>0&&Math.abs(x-log.x)<log.len/2)floor=Math.min(floor??Infinity,log.y-log.r);}
+      return floor;
+    });
   }
   updateAttacks(dt){
     if(this.activeIndex===0){this.attacks=[];this.projectiles=[];return false;}
     for(const attack of this.attacks){
-      if(!attack.pile.requires.every(id=>this.pressed(id))){this.logStacks.get(attack.pile.x).cancelAttack(false);attack.remaining=0;continue;}
       attack.remaining-=dt;if(attack.remaining>0)continue;
       const stack=this.logStacks.get(attack.pile.x),p=this.player,target=attack.target||{x:p.x,y:p.y-34};
       const plate=this.level.plates.find(plate=>attack.pile.requires.includes(plate.id));
@@ -324,16 +328,11 @@ export class Adventure {
       stack.launchAttack();
     }
     this.attacks=this.attacks.filter(attack=>attack.remaining>0);
-    // A return belongs to one whole volley. Release cancels it before launch;
-    // after the first returning log launches, all remaining logs are committed.
-    for(const volley of new Set(this.projectiles.map(log=>log.volley).filter(Boolean))){
-      if(!volley.committed&&!volley.cancelled&&!this.pressed(volley.plateId))volley.cancelled=true;
-    }
+    // A triggered volley finishes even after the player or Echo releases its switch.
     let hit=false;
     this.projectiles=this.projectiles.filter(log=>{
       const view=this.viewport;
       if(log.stage==='waiting'){
-        if(log.volley?.cancelled)return false;
         log.wait-=dt;if(log.wait>0)return true;
         if(log.volley)log.volley.committed=true;
         const target=this.player;log.stage='returning';log.hostile=true;log.opacity=1;log.wasVisible=false;log.x=target.x+(this.random()-.5)*240;log.y=view.top-log.len-100;log.vx=0;log.vy=1400;
@@ -350,7 +349,7 @@ export class Adventure {
       if(collision?.kind==='blocked'||collision?.kind==='roof')Object.assign(log,collision.pose,{hostile:false,deflected:true,deflectedBy:collision.kind,stage:'debris',vx:(this.random()<.5?-1:1)*(500+this.random()*500),vy:-400-this.random()*400,spin:(this.random()-.5)*20,bounces:0,sleeping:false});
       const visible=log.x+log.len>=view.left&&log.x-log.len<=view.right&&log.y+log.len>=view.top&&log.y-log.len<=view.bottom;
       if(visible)log.wasVisible=true;
-      if(log.stage==='outbound'&&!visible&&log.age>.05){if(log.volley?.cancelled)return false;log.stage='waiting';log.wait=3;log.opacity=0;return true;}
+      if(log.stage==='outbound'&&!visible&&log.age>.05){log.stage='waiting';log.wait=3;log.opacity=0;return true;}
       return visible||!log.wasVisible&&log.age<10;
     });return hit;
   }
@@ -358,6 +357,7 @@ export class Adventure {
     if (this.won) return [];
     dt = Math.max(0, Math.min(dt, 1 / 30));
     if(this.dead){
+      stepRunawayPlatforms(this.level,dt,this.level.bushes);
       this.updateBushes(dt,false);
       stepGeese(this.level,dt,x=>terrainY(this.level,x));
       this.updateLogStacks(dt,[],false);this.updateAttacks(dt);for(const bridge of this.level.bridges)bridge.progress=approach(bridge.progress,0,dt/.4);
@@ -366,9 +366,10 @@ export class Adventure {
       if(body.eater){const t=Math.min(1,body.age/.38),ease=t*t*(3-2*t);body.x=body.fromX+(body.eater.x-body.fromX)*ease;body.y=body.fromY+(body.eater.y-25-body.fromY)*ease;body.scale=1-t;body.angle=t*.8;body.opacity=1-t;}
       else{if(body.age<.5){body.vy+=1000*dt;body.x+=body.vx*dt;body.y+=body.vy*dt;body.angle+=Math.sign(body.vx)*5*dt;const floor=terrainY(this.level,body.x);if(floor!==null&&body.y>floor){body.y=floor;body.vy=0;}}
       body.opacity=body.age>=.9?0:body.age>.38?(Math.floor((body.age-.38)/.065)%2?0:1):1;}
-      if(this.deathTimer<=0){this.restartTake({preserveWorld:true});return ['respawn'];}return [];
+      if(this.deathTimer<=0){this.restartTake();return ['respawn'];}return [];
     }
     const p = this.player, events = [];
+    stepRunawayPlatforms(this.level,dt,[p,...this.level.bushes]);
     const pileLogs=this.level.logPiles.filter(pile=>Math.abs(pile.x+pile.w/2-p.x)<pile.w/2+100).flatMap(pile=>{const stack=this.logStacks.get(pile.x);return stack.solid?stack.logs.filter(log=>log.built&&log.opacity>0):[];});
     pushOutOfLogs(p,pileLogs);const previousY=p.y,previousX=p.x;
     if(input.left||input.right||input.jumpPressed)this.recordingStarted=true;
@@ -385,7 +386,7 @@ export class Adventure {
     if(p.grounded&&direction&&p.vx*direction<0)p.vx=0;
     p.vx = approach(p.vx, direction * (input.walk ? PHYSICS.walkSpeed : PHYSICS.speed), (direction ? (p.grounded ? 2300 : 1700) : (p.grounded ? 2800 : 550)) * dt);
     p.gait = Math.abs(p.vx)<18?'idle':input.walk?'walk':'run';
-    const solids = [...this.level.terraces,...this.level.sheds.map(s=>({x:s.x-14,y:s.roofY-20,w:s.w+28,h:30})),...this.level.fences.filter(f=>!f.broken).map(f=>({x:f.x,y:f.y-f.h,w:f.w,h:f.h}))];
+    const solids = [...this.level.terraces,...this.level.platforms.filter(p=>!p.profile),...this.level.sheds.map(s=>({x:s.x-14,y:s.roofY-20,w:s.w+28,h:30})),...this.level.fences.filter(f=>!f.broken).map(f=>({x:f.x,y:f.y-f.h,w:f.w,h:f.h}))];
     const followedGround=p.grounded;
     p.x += p.vx * dt;
     for (const solid of solids) if (overlaps(p, solid)) {
@@ -450,7 +451,7 @@ export class Adventure {
         if(actor==='player')this.playerPressCounts.set(plate.id,(this.playerPressCounts.get(plate.id)||0)+1);
         // Joining an already-held plate is not another physical press.
         const entrant=contacts.has('player')?'player':contacts.values().next().value;
-        if(actor===entrant&&before.size===0&&plate.bell){const pressing=actor==='player'?p:this.echoPosition(this.echoes.find(e=>'echo:'+e.id===actor));if(ringBell(this.level.geese,plate,pressing))events.push('honk');}
+        if(actor===entrant&&before.size===0&&plate.bell){const pressing=actor==='player'?p:this.echoPosition(this.echoes.find(e=>'echo:'+e.id===actor));if(ringBell(this.level.geese,plate,pressing)){events.push('honk');startRunawayPlatform(this.level,plate.id);}}
         const section=this.sections[plate.section],learned=plate.section>0&&actor===entrant&&before.size===0;
         if(learned){plate.trapResolved=true;if(plate===section.plates[0])section.trapResolved=true;for(const hole of section.holes)if(hole.plateId===plate.id)hole.armed=true;}
         if(learned){

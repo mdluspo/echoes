@@ -55,7 +55,7 @@ export function hamsterFrame(p,time){
 export function groundProfilePoints(level,left,right){
   const points=new Set([left,right]);
   for(let x=Math.ceil(left/4)*4;x<right;x+=4)points.add(x);
-  for(const mound of level.mounds){const ramp=mound.ramp??120;for(const x of [mound.x-(mound.rampLeft??ramp),mound.x,mound.x+mound.w,mound.x+mound.w+(mound.rampRight??ramp)])if(x>left&&x<right)points.add(x);}
+  for(const mound of [...level.mounds,...(level.platforms||[]).filter(p=>p.profile)]){const ramp=mound.ramp??120;for(const x of [mound.x-(mound.rampLeft??ramp),mound.x,mound.x+mound.w,mound.x+mound.w+(mound.rampRight??ramp)])if(x>left&&x<right)points.add(x);}
   for(const terrace of level.terraces)for(const edge of [terrace.x,terrace.x+terrace.w])for(const x of [edge-.01,edge,edge+.01])if(x>left&&x<right)points.add(x);
   return [...points].sort((a,b)=>a-b).map(x=>[x,terrainY(level,x)]);
 }
