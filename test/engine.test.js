@@ -1,6 +1,6 @@
 ﻿import test from 'node:test';
 import assert from 'node:assert/strict';
-import { Adventure, PHYSICS, STEP, createLevel, ECHO_TICKS, ECHO_REPLAY_TICKS, ECHO_HOLD_TICKS, terrainY, SECTION_LENGTH } from '../src/engine.js';
+import { Adventure, CHAPTERS, PHYSICS, STEP, createLevel, ECHO_TICKS, ECHO_REPLAY_TICKS, ECHO_HOLD_TICKS, terrainY, SECTION_LENGTH, logTouchesActor } from '../src/engine.js';
 
 function frames(game,count,input={}){for(let i=0;i<count;i++)game.update(typeof input==='function'?input(i):input);}
 function aim(game,x){
@@ -19,6 +19,11 @@ function jumpTo(game,x){
 }
 function firstPlate(game){walkTo(game,210);jumpTo(game,290);assert.equal(game.player.y,455);walkTo(game,300);jumpTo(game,450);assert.equal(game.player.y,390);walkTo(game,500);}
 function runUntil(game,x,limit=600){for(let i=0;i<limit&&game.player.x<x;i++){game.update({right:true});assert.equal(game.dead,false,`Running to ${x} must survive`);}assert.ok(game.player.x>=x-1,`Run stopped at ${game.player.x}`);}
+function waitForEchoVolley(game,plate){
+  for(let i=0;i<260;i++){game.update();assert.equal(game.dead,false,'shelter must remain safe during the replayed volley');
+    if(game.echoes.some(e=>game.echoActive(e)&&game.onPlate(game.echoPosition(e),plate))&&!game.attacks.length&&!game.projectiles.some(log=>log.hostile))return;
+  }assert.fail('The Echo volley must finish while its switch is still held');
+}
 
 // These exercise the real continuous simulation rather than moving the actor by hand.
 test('running accelerates continuously and stops on release',()=>{
@@ -52,7 +57,7 @@ test('the first two ledges and striped plate can be reached with actual jumps',(
 test('creating an Echo preserves the player, world time and existing logs',()=>{
   const game=new Adventure();firstPlate(game);const player={...game.player},tick=game.tick,phase=game.logStacks.get(980).phase;
   assert.equal(game.commit().ok,true);assert.deepEqual(game.player,player);assert.equal(game.tick,tick);assert.equal(game.logStacks.get(980).phase,phase);
-  assert.equal(game.echoPosition(game.echoes[0]).x,game.echoes[0].frames[0].x);assert.equal(game.onPlate(game.echoPosition(game.echoes[0]),game.section.plates[0]),true);
+  assert.equal(game.echoPosition(game.echoes[0]).x,game.echoes[0].frames[0].x);assert.notEqual(game.echoPosition(game.echoes[0]).x,game.player.x);
 });
 test('an Echo replays from its own birth tick, holds, then releases its plate',()=>{
   const game=new Adventure();firstPlate(game);game.commit();const echo=game.echoes[0],count=echo.frames.length;
@@ -74,7 +79,7 @@ test('waiting before the first movement does not fill the recording',()=>{
 test('a stacked pile blocks movement and a replaying Echo scatters it',()=>{
   const game=new Adventure();firstPlate(game);game.commit();const echo=game.echoes[0];walkTo(game,600);
   while(game.tick-echo.startTick<echo.frames.length)game.update();assert.ok(game.pileCleared(game.level.logPiles[0]));
-  const closed=new Adventure();closed.player.x=930;frames(closed,120,{right:true});assert.ok(closed.player.x<=980-PHYSICS.width/2);
+  const closed=new Adventure();closed.player.x=930;frames(closed,120,{right:true});assert.ok(closed.player.x<1000);assert.ok(closed.logStacks.get(980).homes.every(log=>!logTouchesActor(log,closed.player)));
 });
 test('death clears the Echo and recording immediately, then respawns at the checkpoint',()=>{
   const game=new Adventure();firstPlate(game);game.commit();game.player.x=810;game.player.y=940;game.player.vy=900;
@@ -83,13 +88,12 @@ test('death clears the Echo and recording immediately, then respawns at the chec
   for(let i=0;i<130&&game.dead;i++)game.update();
   assert.equal(game.dead,false);assert.equal(game.player.x,100);assert.equal(game.tick,0);assert.equal(game.echoes.length,0);assert.equal(game.recording.length,1);
 });
-test('seed pickup is persistent across a retry and reset clears it',()=>{
-  const game=new Adventure();game.player.x=285;game.player.y=441;game.player.grounded=false;
-  assert.ok(game.update().includes('seed'));assert.equal(game.seeds.size,1);game.restartTake();assert.equal(game.seeds.size,1);game.reset();assert.equal(game.seeds.size,0);
+test('floating collectibles are removed from every trail',()=>{
+  const game=new Adventure();assert.deepEqual(game.level.seeds,[]);for(let i=0;i<CHAPTERS.length;i++)assert.deepEqual(createLevel(i).seeds,[]);
 });
 test('levels two and three share the ledge layout, with a retreat hole added to the third',()=>{
   const second=createLevel(1),third=createLevel(2),local=(items,start)=>items.map(p=>({...p,x:p.x-start,section:0}));
-  assert.deepEqual(local(second.ground,second.start),local(third.ground.map((g,i)=>i===third.ground.length-1?{...g,w:g.w-300}:g),third.start));
+  assert.deepEqual(local(second.ground,second.start),local(third.ground,third.start));
   assert.deepEqual(local(second.terraces,second.start),local(third.terraces,third.start));
   assert.equal(second.holes.length,0);assert.equal(third.holes.length,1);
 });
@@ -112,13 +116,15 @@ test('death flings the body backward, flickers it, then removes it before respaw
 
 function finishCurrentSection(game){
   const section=game.section,start=section.start,index=section.index;
+  if(index===3){finishFourthSection(game);return;}
+  if(index===4){finishFifthSection(game);return;}
   if(index===0){
     walkTo(game,500);game.commit();runUntil(game,710);jumpTo(game,970);runUntil(game,1490);jumpTo(game,1750);
   }else{
   walkTo(game,start+520);jumpTo(game,start+690);assert.equal(game.commit().ok,true);
   if(index===1){frames(game,9);while(game.player.x>start+625){game.update({left:true});assert.equal(game.dead,false);}}
   else{frames(game,18);jumpTo(game,start+480);assert.ok(section.holes[0].open);}
-  for(let i=0;i<100;i++){game.update();assert.equal(game.dead,false,'retreat must survive the whole-pile volley');}
+  waitForEchoVolley(game,section.plates[0]);
   if(index===1){jumpTo(game,start+490);walkTo(game,start+520);jumpTo(game,start+690);}
   else{walkTo(game,start+490);jumpTo(game,start+700);}
   walkTo(game,start+720);jumpTo(game,start+950);runUntil(game,start+1280);runUntil(game,start+1570);jumpTo(game,start+1800);
@@ -130,30 +136,105 @@ function finishCurrentSection(game){
   assert.equal(game.pileCleared(section.logPiles[1]),true);runUntil(game,start+2440);
   runUntil(game,start+(index===0?2580:2540));jumpTo(game,start+2810);
   // The final perch must be held by a different Echo during the long creek crossing.
-  walkTo(game,start+3080);game.resetEcho();walkTo(game,start+3130);assert.equal(game.commit().ok,true);
-  frames(game,8);jumpTo(game,start+3200);runUntil(game,start+(index===0?3290:3260));jumpTo(game,start+3540);
+  walkTo(game,start+3080);game.resetEcho();walkTo(game,start+(index===0?3130:3124));assert.equal(game.commit().ok,true);
+  if(index>0){walkTo(game,start+2970);waitForEchoVolley(game,section.plates[2]);walkTo(game,start+3130);}else frames(game,8);
+  jumpTo(game,start+3200);runUntil(game,start+(index===0?3290:3260));jumpTo(game,start+3540);
   for(let i=0;i<300&&!game.pileCleared(section.logPiles[2]);i++){game.update();assert.equal(game.dead,false);}
   assert.equal(game.pileCleared(section.logPiles[2]),true);runUntil(game,section.end);
 }
 for(const index of [0,1,2])for(const route of index===2?['high','low']:['low']){
   test('section '+(index+1)+' reaches its flag with real movement ('+route+' memory)',()=>{
     const game=new Adventure(index,{lastRoute:route},()=>0);finishCurrentSection(game);
-    assert.ok(game.completed.includes(index));assert.equal(game.won,index===2);
-    if(index<2){assert.equal(game.activeIndex,index+1);assert.ok(game.player.vx>0);assert.ok(game.player.x>=game.section.start);}
+    assert.ok(game.completed.includes(index));assert.equal(game.won,false);
+    assert.equal(game.activeIndex,index+1);assert.ok(game.player.vx>0);assert.ok(game.player.x>=game.section.start);
   });
 }
-test('all three sections form one playable continuous run',()=>{
-  const game=new Adventure(0,{},()=>0);
-  for(let i=0;i<3;i++){
-    finishCurrentSection(game);
-    if(i<2){assert.equal(game.won,false);game.retireBehind((i+1)*SECTION_LENGTH);}
+function waitForLinkedEchoes(game,bridge){
+  for(let i=0;i<620;i++){
+    game.update();assert.equal(game.dead,false);
+    if(bridge.progress===1&&bridge.requires.every(id=>game.echoes.some(e=>game.echoActive(e)&&game.onPlate(game.echoPosition(e),game.level.plates.find(p=>p.id===id)))))return;
+  }assert.fail('Both Echoes must hold the linked switches long enough to cross');
+}
+function finishFourthSection(game){
+  const start=game.section.start;
+  walkTo(game,start+480);assert.equal(game.commit().ok,true);walkTo(game,start+740);assert.equal(game.commit().ok,true);
+  waitForLinkedEchoes(game,game.section.bridges[0]);runUntil(game,start+1490);
+  game.resetEcho();walkTo(game,start+1550);assert.equal(game.commit().ok,true);
+  walkTo(game,start+1755);
+  for(let i=0;i<360;i++){game.update();assert.equal(game.dead,false,'the shed must protect the hamster through both returning waves');}
+  assert.ok(game.projectiles.every(log=>!['outbound','waiting','returning'].includes(log.stage)));
+  walkTo(game,start+2210);assert.equal(game.commit().ok,true);
+  waitForLinkedEchoes(game,game.section.bridges[1]);runUntil(game,start+2820);
+  game.resetEcho();walkTo(game,start+2980);jumpTo(game,start+3100);assert.equal(game.commit().ok,true);
+  frames(game,9);while(game.player.x>start+3055){game.update({left:true});assert.equal(game.dead,false);}
+  waitForEchoVolley(game,game.section.plates.find(p=>p.id==='D6'));assert.equal(game.dead,false);jumpTo(game,start+2970);jumpTo(game,start+3100);
+  walkTo(game,start+3130);runUntil(game,start+3900);jumpTo(game,start+4200);
+  game.resetEcho();walkTo(game,start+4370);assert.equal(game.commit().ok,true);
+  for(let i=0;i<200&&!game.pileCleared(game.section.logPiles[2]);i++)game.update();runUntil(game,start+5000);
+  const fourth=game.section;game.resetEcho();walkTo(game,start+5980);assert.equal(game.commit().ok,true);
+  for(let i=0;i<600&&!fourth.exit.caught;i++){game.update();assert.equal(game.dead,false);}
+  assert.equal(fourth.exit.caught,true);walkTo(game,start+5910);assert.equal(game.activeIndex,4);assert.equal(game.won,false);
+}
+test('the fourth trail teaches two linked crossings before trapping and catching the runaway flag',()=>{finishFourthSection(new Adventure(3));});
+
+function finishFifthSection(game){
+  const fifth=game.section,start=fifth.start;
+  for(const [i,base]of [0,2050,4270].entries()){
+    walkTo(game,start+base+550);game.resetEcho();walkTo(game,start+base+570);frames(game,15);
+    if(i===2)assert.equal(game.commit().ok,true);
+    walkTo(game,start+base+650);assert.equal(game.commit().ok,true);
+    walkTo(game,start+base+430);
+    for(let tick=0;tick<240&&(!fifth.fences[i].broken||['warning','charge'].includes(fifth.geese[i].phase));tick++){game.update();assert.equal(game.dead,false,'raised grass must protect the hamster from the goose');}
+    assert.equal(fifth.fences[i].broken,true);assert.ok(!['warning','charge'].includes(fifth.geese[i].phase));
+    if(i===1){walkTo(game,start+3190);assert.equal(game.commit().ok,true);jumpTo(game,start+3410);}
+    runUntil(game,start+base+1800);
+    if(i<2){runUntil(game,start+(i===0?1840:4060));jumpTo(game,start+(i===0?2110:4330));}
   }
-  assert.equal(game.won,true);assert.deepEqual(game.completed,[0,1,2]);assert.equal(game.memory.completed,3);
+  runUntil(game,fifth.end);assert.equal(game.won,true);
+}
+test('the goose trail is playable using recorded bell decoys, raised cover, and both Echoes in the finale',()=>{finishFifthSection(new Adventure(4,{},()=>0));});
+
+test('the longer fourth level retains three log puzzles, both bridges, and level-three log mechanics',()=>{
+  const game=new Adventure(3),fourth=game.section,third=createLevel(2);
+  assert.equal(fourth.end-fourth.start,6000);assert.ok(fourth.end-fourth.start>third.end-third.start);assert.equal(game.level.width,game.sections.at(-1).end+300);
+  assert.equal(third.logPiles.length,3);assert.equal(fourth.logPiles.length,3);assert.equal(fourth.bridges.length,2);
+  for(const pile of fourth.logPiles)assert.ok(pile.requires.every(id=>fourth.plates.some(plate=>plate.id===id)));
+  for(const bridge of fourth.bridges){bridge.progress=0;assert.equal(terrainY(game.level,bridge.x-.01),bridge.y);assert.equal(terrainY(game.level,bridge.x+bridge.w+.01),bridge.y);}
+});
+
+test('linked bridges need both switches, have no floor before fully lowered, and close when an Echo expires',()=>{
+  const game=new Adventure(3),bridge=game.section.bridges[0],plates=bridge.requires.map(id=>game.level.plates.find(p=>p.id===id));
+  const hold=(plate,id)=>({id,slot:id-1,startTick:game.tick,lifetime:600,frames:[{...game.player,x:plate.x,y:plate.y}]});
+  game.echoes=[hold(plates[0],1)];frames(game,50);assert.equal(bridge.progress,0);assert.equal(terrainY(game.level,bridge.x+200),null);
+  game.echoes.push(hold(plates[1],2));frames(game,12);assert.ok(bridge.progress>0&&bridge.progress<1);assert.equal(terrainY(game.level,bridge.x+200),null);
+  frames(game,30);assert.equal(terrainY(game.level,bridge.x+200),510);
+  game.echoes[0].lifetime=game.tick-game.echoes[0].startTick;game.update();assert.ok(bridge.progress<1);assert.equal(terrainY(game.level,bridge.x+200),null);
+  game.restartTake();assert.equal(bridge.progress,0);
+});
+
+test('the flag escapes without a snare and cannot be bypassed at the old finish boundary',()=>{
+  const game=new Adventure(3),flag=game.section.exit;
+  Object.assign(game.player,{x:flag.homeX-100,y:510,grounded:true});game.update();assert.equal(flag.running,true);assert.ok(flag.x>flag.homeX);
+  frames(game,200);assert.equal(flag.caught,false);assert.ok(flag.x>=flag.minX&&flag.x<=flag.maxX);
+  game.player.x=game.section.end+60;game.update();assert.equal(game.won,false);
+  const plate=game.section.plates.find(p=>p.id===flag.requires);
+  game.echoes=[{id:1,slot:0,startTick:game.tick,lifetime:600,frames:[{...game.player,x:plate.x,y:plate.y,grounded:true}]}];
+  for(let i=0;i<260&&!flag.caught;i++)game.update();assert.equal(flag.caught,true);assert.equal(flag.x,flag.trapX);assert.equal(game.won,false);
+  game.resetEcho();frames(game,30);assert.equal(flag.caught,true);game.restartTake();assert.equal(flag.x,flag.homeX);assert.equal(flag.caught,false);assert.equal(flag.running,false);
+});
+
+test('all five sections form one playable continuous run',()=>{
+  const game=new Adventure(0,{},()=>0);
+  for(let i=0;i<CHAPTERS.length;i++){
+    finishCurrentSection(game);
+    if(i<CHAPTERS.length-1){assert.equal(game.won,false);game.retireBehind(game.sections[i].end);}
+  }
+  assert.equal(game.won,true);assert.deepEqual(game.completed,[0,1,2,3,4]);assert.equal(game.memory.completed,5);
 });
 test('a big closed log pile cannot be bypassed with repeated jumps',()=>{
   const game=new Adventure(),pile=game.level.logPiles[0];game.player.x=pile.x-65;game.player.y=510;
   for(let i=0;i<500;i++)game.update({right:true,jumpPressed:i%65===0,jumpHeld:true});
-  assert.ok(game.player.x<=pile.x-PHYSICS.width/2);assert.ok(pile.h>PHYSICS.jump**2/(2*PHYSICS.gravity));
+  assert.ok(game.player.x<pile.x+pile.w/2);assert.ok(game.logStacks.get(pile.x).homes.every(log=>!logTouchesActor(log,game.player)));assert.ok(pile.h>PHYSICS.jump**2/(2*PHYSICS.gravity));
 });
 test('completed scenery retires only once entirely behind the view, and locks backtracking',()=>{
   const game=new Adventure();finishCurrentSection(game);
@@ -164,7 +245,7 @@ test('completed scenery retires only once entirely behind the view, and locks ba
   game.restartTake();assert.equal(game.player.x,SECTION_LENGTH+100);assert.equal(game.cameraFloor,SECTION_LENGTH);
 });
 
-test('long histories replay only the latest second without speeding up the recorded movement',()=>{
+test('Echoes replay the last three seconds at the original speed, including recorded waits',()=>{
   const game=new Adventure();frames(game,20,{right:true});frames(game,1000);frames(game,20,{left:true});
   assert.equal(game.recording.length,ECHO_TICKS+1);const recent=game.recording.slice(-ECHO_REPLAY_TICKS-1).map(frame=>({...frame})),player={...game.player};
   assert.equal(game.commit().ok,true);const echo=game.echoes[0];assert.deepEqual(echo.frames,recent);assert.deepEqual(game.player,player);
@@ -172,11 +253,11 @@ test('long histories replay only the latest second without speeding up the recor
   assert.equal(game.echoPosition(echo).x,player.x);
 });
 
-test('a newly created Echo holds the current plate immediately and never lets its pile rebuild during the handoff',()=>{
+test('an Echo replays its approach to a switch rather than spawning on the current button',()=>{
   const game=new Adventure();firstPlate(game);const plate=game.section.plates[0],pile=game.section.logPiles[0];
-  assert.equal(game.commit().ok,true);const echo=game.echoes[0];assert.equal(game.onPlate(game.echoPosition(echo),plate),true);
-  for(let i=0;i<90;i++){game.update({right:i<16});assert.equal(game.pressed(plate.id),true);assert.equal(game.pileCleared(pile),true);}
-  assert.equal(game.onPlate(game.player,plate),false);assert.ok(echo.frames.length<=ECHO_REPLAY_TICKS+1);
+  const recording=game.recording.map(p=>({...p}));assert.equal(game.commit().ok,true);const echo=game.echoes[0];assert.equal(game.onPlate(game.echoPosition(echo),plate),false);
+  assert.deepEqual(echo.frames,recording);walkTo(game,600);assert.equal(game.onPlate(game.player,plate),false);
+  while(game.tick-echo.startTick<echo.frames.length-1)game.update();assert.equal(game.pressed(plate.id),true);assert.equal(game.pileCleared(pile),true);
 });
 
 test('Vanish frees both slots immediately while a new clip starts without moving the player',()=>{
@@ -190,7 +271,7 @@ test('Vanish frees both slots immediately while a new clip starts without moving
   game.restartTake();assert.equal(game.echoRecording.length,1);assert.equal(game.commit().reason,'empty');
 });
 
-test('Vanish immediately reuses a long history as a short replay and preserves switch contact',()=>{
+test('Vanish can immediately reuse the full three-second recording without inventing new actions',()=>{
   const game=new Adventure();firstPlate(game);frames(game,ECHO_TICKS+50);assert.equal(game.recording.length,ECHO_TICKS+1);
   game.commit();game.resetEcho();assert.equal(game.recording.length,1);assert.equal(game.commit().ok,true);
   const echo=game.echoes[0];assert.ok(echo.frames.length<=ECHO_REPLAY_TICKS+1);

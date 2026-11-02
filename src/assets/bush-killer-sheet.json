@@ -1,0 +1,272 @@
+{
+  "image": "bush-killer-sheet.png",
+  "source": "bush-supplied-sheet.png",
+  "columns": 7,
+  "rows": 2,
+  "cellWidth": 512,
+  "cellHeight": 384,
+  "anchor": {
+    "x": 256,
+    "y": 360
+  },
+  "background": "transparent",
+  "defaultFrame": {
+    "row": 0,
+    "column": 0
+  },
+  "animations": {
+    "creep": {
+      "row": 0,
+      "frames": 7,
+      "distancePerCycle": 150,
+      "loop": true
+    },
+    "eat": {
+      "row": 1,
+      "frames": 7,
+      "loop": false
+    }
+  },
+  "frames": [
+    {
+      "row": 0,
+      "column": 0,
+      "sourceBounds": {
+        "x": 52,
+        "y": 94,
+        "w": 170,
+        "h": 88
+      },
+      "sourceAnchor": {
+        "x": 138,
+        "y": 182
+      },
+      "mouth": null
+    },
+    {
+      "row": 0,
+      "column": 1,
+      "sourceBounds": {
+        "x": 309,
+        "y": 95,
+        "w": 171,
+        "h": 89
+      },
+      "sourceAnchor": {
+        "x": 396,
+        "y": 184
+      },
+      "mouth": null
+    },
+    {
+      "row": 0,
+      "column": 2,
+      "sourceBounds": {
+        "x": 564,
+        "y": 95,
+        "w": 172,
+        "h": 91
+      },
+      "sourceAnchor": {
+        "x": 651,
+        "y": 186
+      },
+      "mouth": null
+    },
+    {
+      "row": 0,
+      "column": 3,
+      "sourceBounds": {
+        "x": 820,
+        "y": 95,
+        "w": 170,
+        "h": 88
+      },
+      "sourceAnchor": {
+        "x": 906,
+        "y": 183
+      },
+      "mouth": null
+    },
+    {
+      "row": 0,
+      "column": 4,
+      "sourceBounds": {
+        "x": 1076,
+        "y": 95,
+        "w": 170,
+        "h": 88
+      },
+      "sourceAnchor": {
+        "x": 1162,
+        "y": 183
+      },
+      "mouth": null
+    },
+    {
+      "row": 0,
+      "column": 5,
+      "sourceBounds": {
+        "x": 1335,
+        "y": 92,
+        "w": 169,
+        "h": 90
+      },
+      "sourceAnchor": {
+        "x": 1421,
+        "y": 182
+      },
+      "mouth": null
+    },
+    {
+      "row": 0,
+      "column": 6,
+      "sourceBounds": {
+        "x": 1585,
+        "y": 95,
+        "w": 170,
+        "h": 88
+      },
+      "sourceAnchor": {
+        "x": 1671,
+        "y": 183
+      },
+      "mouth": null
+    },
+    {
+      "row": 1,
+      "column": 0,
+      "sourceBounds": {
+        "x": 59,
+        "y": 481,
+        "w": 170,
+        "h": 88
+      },
+      "sourceAnchor": {
+        "x": 145,
+        "y": 569
+      },
+      "mouth": null
+    },
+    {
+      "row": 1,
+      "column": 1,
+      "sourceBounds": {
+        "x": 309,
+        "y": 459,
+        "w": 176,
+        "h": 108
+      },
+      "sourceAnchor": {
+        "x": 394,
+        "y": 567
+      },
+      "mouth": {
+        "x": 12,
+        "y": -31,
+        "w": 79,
+        "h": 30
+      }
+    },
+    {
+      "row": 1,
+      "column": 2,
+      "sourceBounds": {
+        "x": 552,
+        "y": 427,
+        "w": 180,
+        "h": 140
+      },
+      "sourceAnchor": {
+        "x": 640,
+        "y": 567
+      },
+      "mouth": {
+        "x": -15,
+        "y": -53,
+        "w": 107,
+        "h": 52
+      }
+    },
+    {
+      "row": 1,
+      "column": 3,
+      "sourceBounds": {
+        "x": 784,
+        "y": 383,
+        "w": 216,
+        "h": 185
+      },
+      "sourceAnchor": {
+        "x": 896,
+        "y": 568
+      },
+      "mouth": {
+        "x": -47,
+        "y": -122,
+        "w": 143,
+        "h": 120
+      }
+    },
+    {
+      "row": 1,
+      "column": 4,
+      "sourceBounds": {
+        "x": 1034,
+        "y": 278,
+        "w": 360,
+        "h": 289
+      },
+      "sourceAnchor": {
+        "x": 1155,
+        "y": 567
+      },
+      "mouth": {
+        "x": -55,
+        "y": -220,
+        "w": 294,
+        "h": 219
+      }
+    },
+    {
+      "row": 1,
+      "column": 5,
+      "sourceBounds": {
+        "x": 1298,
+        "y": 389,
+        "w": 244,
+        "h": 177
+      },
+      "sourceAnchor": {
+        "x": 1410,
+        "y": 566
+      },
+      "mouth": {
+        "x": -112,
+        "y": -177,
+        "w": 244,
+        "h": 177
+      }
+    },
+    {
+      "row": 1,
+      "column": 6,
+      "sourceBounds": {
+        "x": 1580,
+        "y": 455,
+        "w": 178,
+        "h": 110
+      },
+      "sourceAnchor": {
+        "x": 1666,
+        "y": 565
+      },
+      "mouth": {
+        "x": 3,
+        "y": -32,
+        "w": 89,
+        "h": 32
+      }
+    }
+  ]
+}

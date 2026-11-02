@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { Adventure, terrainY, groundBanks, STEP, segmentBox, SECTION_LENGTH, logAttackCover, logAttackEscape } from '../src/engine.js';
+import { Adventure, terrainY, groundBanks, STEP, segmentBox, SECTION_LENGTH, logAttackCover, logAttackEscape, logTouchesActor } from '../src/engine.js';
 function place(game,x){Object.assign(game.player,{x,y:terrainY(game.level,x),vx:0,vy:0,grounded:true});}
 function press(game,puzzle=0){place(game,game.section.plates[puzzle].x);return game.update();}
 function arm(game,puzzle=0){assert.ok(press(game,puzzle).includes('warning'));}
@@ -26,7 +26,7 @@ test('level three first and last puzzles can attack while its flat middle switch
     const game=new Adventure(2,{},()=>0);arm(game,puzzle);
     for(let i=0;i<30&&!game.projectiles.length;i++)game.update();
     assert.equal(game.projectiles.length,24);assert.ok(game.projectiles.every(log=>log.hostile));
-    const skipped=new Adventure(2,{},()=>.999);assert.ok(!press(skipped,puzzle).includes('warning'));assert.equal(skipped.attacks.length,0);
+    const skipped=new Adventure(2,{},()=>.999);assert.equal(press(skipped,puzzle).includes('warning'),puzzle===0);assert.equal(skipped.attacks.length,puzzle===0?1:0);
   }
   const middle=new Adventure(2,{},()=>0);assert.ok(!press(middle,1).includes('warning'));assert.equal(middle.attacks.length,0);
 });
@@ -36,7 +36,7 @@ test('level two first and final puzzles each roll their own lethal full-pile att
     const game=new Adventure(1,{},()=>0);arm(game,puzzle);
     for(let i=0;i<28;i++)game.update();assert.equal(game.projectiles.length,24);assert.ok(game.projectiles.every(log=>log.hostile));
     for(let i=0;i<100&&!game.dead;i++)game.update();assert.equal(game.dead,true);assert.equal(game.deathReason,'logs');
-    const skipped=new Adventure(1,{},()=>.999);assert.equal(press(skipped,puzzle).includes('warning'),false);assert.equal(skipped.attacks.length,0);
+    const skipped=new Adventure(1,{},()=>.999);assert.equal(press(skipped,puzzle).includes('warning'),puzzle===0);assert.equal(skipped.attacks.length,puzzle===0?1:0);
   }
 });
 
@@ -50,9 +50,9 @@ test('the opening grove attack requires a jumpable retreat and a solid landing b
 test('each eligible shelter supports the hamster and protects it from the full volley',()=>{
   for(const [index,puzzle]of [[1,0],[1,2],[2,2]])for(const offset of [-8,0,8]){
     const game=new Adventure(index,{},()=>0),plate=game.section.plates[puzzle],pile=game.section.logPiles[puzzle],cover=logAttackCover(game.level,plate,pile,game.section.trap);
-    assert.ok(cover);arm(game,puzzle);place(game,cover.x+offset);
+    assert.ok(cover);arm(game,puzzle);game.echoes=[{id:1,startTick:game.tick,lifetime:600,frames:[{...game.player}]}];place(game,cover.x+offset);
     for(let i=0;i<220;i++){game.update();assert.equal(game.dead,false,`Shelter for ${plate.id} must block the complete volley`);}
-    assert.equal(game.projectiles.length,0);
+    assert.ok(game.projectiles.every(log=>!log.hostile));
   }
 });
 
@@ -84,16 +84,38 @@ test('an attack launches every log in the pile, without duplicate harmless debri
     assert.ok(Math.hypot(log.vx,log.vy)>1450&&Math.hypot(log.vx,log.vy)<1900,'logs stay fast but allow a fair retreat');
     const flight=(target.x-log.x)/log.vx;
     assert.ok(flight>0&&flight<.4,'short, direct flight instead of a hanging arc');
-    assert.ok(Math.abs(log.y+log.vy*flight+850*flight*flight-(target.y-34))<.01);
+    assert.ok(Math.abs(log.y+log.vy*flight-(target.y-34))<.01);
   }
 });
 test('dropping behind the ledge blocks the entire volley',()=>{
-  const game=new Adventure(1,{},()=>0);arm(game);place(game,game.section.start+620);
+  const game=new Adventure(1,{},()=>0);arm(game);game.echoes=[{id:1,startTick:game.tick,lifetime:600,frames:[{...game.player}]}];place(game,game.section.start+620);
   for(let i=0;i<200;i++){game.update();assert.equal(game.dead,false);}
-  assert.equal(game.dead,false);assert.equal(game.projectiles.length,0);
+  assert.equal(game.dead,false);assert.ok(game.projectiles.every(log=>!log.hostile));
+});
+
+test('a log passing just above cover cannot hit the larger invisible box above a protected head',()=>{
+  const game=new Adventure(1),x=game.section.start+648;
+  Object.assign(game.player,{x,y:415,grounded:false,vx:0,vy:100});
+  game.projectiles.push({x:x+84,y:330,vx:-1600,vy:-1700*STEP,angle:0,spin:0,len:72,r:18,age:0,hostile:true});
+  assert.equal(game.updateAttacks(STEP),false);
+});
+
+test('the rounded edge of a log does not deal damage through an empty hitbox corner',()=>{
+  const game=new Adventure(1),x=game.section.start+930;place(game,x);
+  game.projectiles.push({x:x+40,y:433,vx:0,vy:-1700*STEP,angle:0,spin:0,len:36,r:18,age:0,hostile:true});
+  assert.equal(game.updateAttacks(STEP),false);
+});
+
+test('the leading rounded end hits the vertical face of cover before the hamster behind it',()=>{
+  const game=new Adventure(1),start=game.section.start;game.level.mounds=[];game.level.terraces=[{x:start+665,y:400,w:8,h:110}];
+  Object.assign(game.player,{x:start+648,y:480,grounded:false,vx:0,vy:0});
+  game.projectiles.push({x:start+720,y:440,vx:-9000,vy:-1700*STEP,angle:0,spin:0,len:72,r:18,age:0,hostile:true});
+  assert.equal(game.updateAttacks(STEP),false);assert.ok(game.projectiles.every(log=>!log.hostile&&log.deflected));
 });
 test('recrossing the plate while the Echo holds it does not ambush the return journey',()=>{
   const game=new Adventure(1,{},()=>0);arm(game);place(game,game.section.start+620);for(let i=0;i<160;i++){game.update();assert.equal(game.dead,false);}
+  const plate=game.section.plates[0];game.echoes=[{id:1,startTick:game.tick,lifetime:600,frames:[{...game.player,x:plate.x,y:plate.y}]}];game.update();
+  for(let i=0;i<160;i++){game.update();assert.equal(game.dead,false);}
   place(game,game.section.plates[0].x);game.update();assert.equal(game.attacks.length,0);
 });
 
@@ -101,12 +123,13 @@ test('joining a plate already held by an Echo never rebuilds or relaunches its s
   for(const index of [1,2]){
     const game=new Adventure(index,{},()=>0),plate=game.section.plates[0],stack=game.logStacks.get(game.section.logPiles[0].x);
     game.echoes.push({id:1,startTick:0,lifetime:1200,frames:[{...game.player,x:plate.x,y:plate.y}]});
-    assert.ok(game.update({},0).includes('logs'));assert.equal(stack.phase,'scattered');
+    assert.ok(game.update({},0).includes('warning'));assert.equal(stack.phase,'armed');
     const logs=stack.logs.map(log=>({...log}));
     place(game,plate.x);assert.ok(!game.update({},0).includes('warning'));
-    assert.deepEqual(stack.logs,logs);assert.equal(game.attacks.length,0);assert.equal(game.section.trapResolved,false);
+    assert.deepEqual(stack.logs,logs);assert.equal(game.attacks.length,1);assert.equal(game.section.trapResolved,true);
     // An Echo handing the held plate to the player is also not a second press.
-    game.echoes=[];game.update({},0);assert.equal(game.attacks.length,0);
+    game.echoes=[];game.update({},0);assert.equal(game.attacks.length,1);
+    game.attacks=[];stack.launchAttack();
     place(game,plate.x-80);game.update({},0);place(game,plate.x);
     assert.equal(game.update({},0).includes('warning'),true,'a fresh press may arm either the cover trap or the grove jump trap');
   }
@@ -135,10 +158,10 @@ test('later puzzles retain their own attack decision after the first puzzle was 
   assert.equal(game.section.plates[0].trapResolved,true);assert.equal(second.trapResolved,true);
 });
 test('an eligible attack is random on the first encounter as well as retries, with no held-frame rerolls',()=>{
-  let rolls=0;const game=new Adventure(1,{},()=>{rolls++;return .999;});assert.ok(!press(game).includes('warning'));
+  let rolls=0;const game=new Adventure(1,{},()=>{rolls++;return .999;});assert.ok(!press(game,2).includes('warning'));
   for(let i=0;i<120;i++)game.update();assert.equal(rolls,1);assert.equal(game.attacks.length,0);assert.equal(game.projectiles.length,0);assert.equal(game.dead,false);
-  game.restartTake();game.random=()=>0;arm(game);assert.equal(game.attacks.length,1);
-  game.restartTake();game.random=()=>.999;assert.ok(!press(game).includes('warning'));assert.equal(game.attacks.length,0);
+  game.restartTake();game.random=()=>0;arm(game,2);assert.equal(game.attacks.length,1);
+  game.restartTake();game.random=()=>.999;assert.ok(!press(game,2).includes('warning'));assert.equal(game.attacks.length,0);
 });
 test('the third retreat opens an actual gap in the ground and resets on retry',()=>{
   const game=new Adventure(2,{},()=>0);press(game);place(game,game.section.start+599);game.update({left:true});
@@ -156,6 +179,38 @@ test('ordinary scattered logs do not damage the hamster',()=>{
   const game=new Adventure(),stack=game.logStacks.get(980);place(game,930);stack.update(true,0);
   for(const log of stack.logs)Object.assign(log,{x:930,y:480,vx:-800,vy:0});
   for(let i=0;i<12;i++)game.update();assert.equal(game.dead,false);
+});
+
+test('a hamster caught inside a pile when rebuilding begins is crushed and loses its Echoes',()=>{
+  const game=new Adventure(),pile=game.section.logPiles[0],stack=game.logStacks.get(pile.x);
+  stack.update(true,.2);place(game,pile.x+pile.w/2);
+  game.echoes.push({id:99,slot:0,startTick:0,lifetime:600,frames:[{...game.player,x:100}]});
+  game.update();assert.equal(game.dead,false);assert.equal(stack.newPieces.length,0);
+  for(let i=0;i<15&&!game.dead;i++)game.update();assert.equal(game.dead,true);assert.ok(stack.newPieces.length>0);assert.equal(game.deathReason,'crushed');assert.equal(game.echoes.length,0);
+});
+
+test('a rebuilding pile blocks new entry from both sides throughout construction',()=>{
+  for(const right of [false,true]){
+    const game=new Adventure(),pile=game.section.logPiles[0],stack=game.logStacks.get(pile.x);
+    stack.update(true,.2);stack.update(false,0);place(game,right?pile.x-45:pile.x+pile.w+45);
+    for(let i=0;i<100;i++){
+      game.update({right,left:!right});assert.equal(game.dead,false);
+      assert.ok(right?game.player.x<pile.x+30:game.player.x>pile.x+pile.w-30);
+      assert.ok(stack.logs.filter(log=>log.built).every(log=>!logTouchesActor(log,game.player)));
+    }
+  }
+});
+
+test('the empty upper corner of a rebuilding pile is safe even inside its old rectangle',()=>{
+  const game=new Adventure(),pile=game.section.logPiles[0],stack=game.logStacks.get(pile.x);
+  stack.update(true,.2);Object.assign(game.player,{x:pile.x+12,y:330,grounded:false,vx:0,vy:0});
+  assert.ok(stack.homes.every(log=>!logTouchesActor(log,game.player)));game.update();assert.equal(stack.phase,'building');assert.equal(game.dead,false);
+});
+
+test('construction only crushes on its opening transition; later overlap is resolved without another death check',()=>{
+  const game=new Adventure(),pile=game.section.logPiles[0],stack=game.logStacks.get(pile.x);
+  stack.update(true,.2);stack.update(false,.4);place(game,pile.x+pile.w/2);
+  game.update();assert.equal(game.dead,false);assert.ok(stack.logs.filter(log=>log.built).every(log=>!logTouchesActor(log,game.player)));
 });
 test('the former buried-bramble spot is safe to walk through',()=>{
   const game=new Adventure(1);place(game,game.section.start+1950);

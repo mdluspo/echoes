@@ -35,7 +35,7 @@ test('release removes debris one by one while new pieces build locally from the 
   stack.update(false,0);assert.equal(stack.phase,'building');
   assert.deepEqual(stack.logs.map(({x,y,angle})=>({x,y,angle})),poses);
   stack.update(false,.01);assert.ok(stack.logs[0].opacity<1);assert.equal(stack.logs[1].opacity,1);
-  advance(stack,.15,false);assert.equal(stack.solid,false);
+  advance(stack,.15,false);assert.equal(stack.solid,true);
   const built=stack.logs.filter(log=>log.built);assert.ok(built.length>0&&built.length<stack.logs.length);
   assert.deepEqual(built.map(log=>log.index),Array.from({length:built.length},(_,i)=>i));
   for(const log of built){assert.equal(log.x,stack.homes[log.index].x);assert.ok(Math.abs(log.y-stack.homes[log.index].y)<=8);}
@@ -51,9 +51,10 @@ test('a new press flings both new stack pieces and remaining debris from their c
   assert.equal(stack.phase,'scattered');assert.deepEqual(stack.logs.map(({x,y})=>({x,y})),before);
 });
 
-test('rebuilding waits for a hamster inside the crossing before restoring collision',()=>{
-  const stack=fixture();advance(stack,.4);advance(stack,1,false,true);
-  assert.equal(stack.solid,false);advance(stack,REBUILD_SECONDS,false,false);assert.equal(stack.solid,true);
+test('release enters the rebuilding phase immediately, before the first new log appears',()=>{
+  const stack=fixture();advance(stack,.4);stack.update(false,0);
+  assert.equal(stack.phase,'building');assert.equal(stack.solid,true);assert.equal(stack.logs.some(log=>log.built),false);
+  advance(stack,REBUILD_SECONDS,false);assert.equal(stack.phase,'stacked');assert.equal(stack.solid,true);
 });
 
 test('fallen logs remain in the simulation and settle on their sides',()=>{

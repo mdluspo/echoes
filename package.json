@@ -9,7 +9,8 @@
     "dev": "node server.mjs",
     "start": "node server.mjs",
     "test": "node --test test/*.test.js",
-    "check": "node --check server.mjs && node --check src/engine.js && node --check src/log-motion.js && node --check src/art.js && node --check src/main.js"
+    "check": "node --check server.mjs && node --check src/engine.js && node --check src/log-motion.js && node --check src/goose.js && node --check src/bush.js && node --check src/bush-sprites.js && node --check src/art.js && node --check src/main.js && node --check scripts/build-bush-sheet.mjs",
+    "bush-sheet": "node scripts/build-bush-sheet.mjs"
   },
   "engines": {
     "node": ">=18"

@@ -39,17 +39,23 @@ function groundContact(log,surface,dt){
     }
   }
 }
+export function stepDebris(log,dt,surface){
+  if(log.sleeping)return;
+  const steps=Math.max(1,Math.ceil(dt*120)),step=dt/steps;
+  for(let i=0;i<steps;i++){log.vy+=1700*step;log.x+=log.vx*step;log.y+=log.vy*step;log.angle+=log.spin*step;groundContact(log,surface,step);}
+}
 /** Ballistic debris stays separate from the pieces that rebuild locally at the pile. */
 export class LogStack{
   constructor(pile,surface,random=Math.random){
     this.pile=pile;this.surface=surface;this.random=random;this.homes=logHomes(pile,surface);this.reset();
   }
-  reset(){this.phase='stacked';this.age=0;this.logs=this.homes.map(home=>({...home,vx:0,vy:0,spin:0,built:true,opacity:1,scale:1,sleeping:false}));}
+  reset(){this.phase='stacked';this.age=0;this.newPieces=[];this.crushCandidate=false;this.logs=this.homes.map(home=>({...home,vx:0,vy:0,spin:0,built:true,opacity:1,scale:1,sleeping:false}));}
   beginAttack(){this.reset();this.phase='armed';}
-  cancelAttack(){if(this.phase==='armed'){this.phase='stacked';this.update(true,0);}}
+  cancelAttack(held=true){if(this.phase==='armed'){if(held){this.phase='stacked';this.update(true,0);}else{this.launchAttack();this.update(false,0);}}}
   launchAttack(){this.phase='scattered';this.age=0;for(const log of this.logs)Object.assign(log,{built:false,spent:true,sleeping:true,opacity:0,vx:0,vy:0});}
-  get solid(){return this.phase==='stacked';}
-  update(held,dt,occupied=false){
+  get solid(){return this.phase==='stacked'||this.phase==='building';}
+  update(held,dt){
+    this.newPieces=[];
     if(this.phase==='armed'){
       this.age+=dt;const lift=1-Math.pow(1-Math.min(1,this.age/.22),3),center=this.pile.x+this.pile.w/2;
       this.logs.forEach((log,i)=>{
@@ -87,12 +93,11 @@ export class LogStack{
         const elapsed=this.age-i*interval;
         if(elapsed<0)return;
         if(elapsed<.035&&!log.built){log.opacity=log.spent?0:1-elapsed/.035;return;}
-        if(!log.built)Object.assign(log,this.homes[i],{built:true,spent:false,vx:0,vy:0,spin:0,opacity:1,sleeping:false});
+        if(!log.built){Object.assign(log,this.homes[i],{built:true,spent:false,vx:0,vy:0,spin:0,opacity:1,sleeping:false});this.newPieces.push(log);}
         const pop=Math.max(0,Math.min(1,(elapsed-.035)/.055));
         log.y=this.homes[i].y-(1-pop)*8;log.scale=1+Math.sin(pop*Math.PI)*.06;
       });
-      // Restore the solid obstacle only after a hamster already crossing has cleared it.
-      if(this.age>=REBUILD_SECONDS&&!occupied)this.reset();
+      if(this.age>=REBUILD_SECONDS)this.reset();
     }
     return opened;
   }
