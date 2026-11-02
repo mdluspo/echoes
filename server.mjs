@@ -52,12 +52,17 @@ const server = http.createServer(async (req, res) => {
 });
 
 let reloadTimer;
-const watchers = ['src', 'index.html'].map(name => watch(path.join(root, name), () => {
-  clearTimeout(reloadTimer);
-  reloadTimer = setTimeout(() => {
-    for (const client of clients) client.write('data: reload\n\n');
-  }, 100);
-}));
+// File watching is a development-only feature. Vercel runs this module from a
+// packaged filesystem where the source directory may not be present, and its
+// filesystem is not writable/watchable like a local checkout.
+const watchers = process.env.NODE_ENV === 'production' || process.env.VERCEL
+  ? []
+  : ['src', 'index.html'].map(name => watch(path.join(root, name), () => {
+    clearTimeout(reloadTimer);
+    reloadTimer = setTimeout(() => {
+      for (const client of clients) client.write('data: reload\n\n');
+    }, 100);
+  }));
 let port = initialPort;
 server.on('error', error => {
   if (error.code === 'EADDRINUSE' && port < Math.min(initialPort + 10, 65535)) {
