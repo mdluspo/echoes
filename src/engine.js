@@ -121,7 +121,7 @@ export function createLevel(index,memory={}){
     const bridges=[{x:900,y:510,w:460,requires:['D','D2']},{x:2300,y:510,w:460,requires:['D3','D4']}].map(bridge=>({...bridge,x:bridge.x+start,section:index,progress:0}));
     return decorateBushes({...CHAPTERS[index],index,start,end,width:end,spawn:{x:start+100,y:510},
       ground:shift([{x:0,y:510,w:900,h:700},{x:1360,y:510,w:940,h:700},{x:2760,y:510,w:1210,h:700},{x:4140,y:510,w:2160,h:700}]),
-      mounds:shift([{x:2920,y:430,w:60,rampRight:90}]),terraces:shift([{x:3075,y:350,w:65,h:160}]),holes:[],thorns:[],seeds:[],bridges,sheds:shift([{x:1680,y:510,w:150,roofY:300}]),
+      mounds:shift([{x:2920,y:430,w:60,rampRight:90}]),terraces:shift([{x:3075,y:350,w:65,h:160,rampLeft:0,rampRight:0}]),holes:[],thorns:[],seeds:[],bridges,sheds:shift([{x:1680,y:510,w:150,roofY:300}]),
       woodPlatforms:shift([{x:3150,y:430,w:100,h:12,kind:'wood'}]),
       logPiles:shift([{x:1900,y:288,w:260,h:222,requires:['D3']},{x:3450,y:288,w:260,h:222,requires:['D6']},{x:4650,y:288,w:260,h:222,requires:['D7']}]),
       plates:shift([{id:'D',x:480,y:510},{id:'D2',x:740,y:510},{id:'D3',x:1550,y:510,homing:true,attackChance:1},{id:'D4',x:2210,y:510},{id:'D6',x:3100,y:350,cover:{x:start+3055,w:34}},{id:'D7',x:4370,y:510},{id:'D5',x:5980,y:510}]),
@@ -154,7 +154,7 @@ export function createLevel(index,memory={}){
   mounds.push(...(index===0?[
     {x:2460,y:455,w:100},{x:2540,y:415,w:80,ramp:95},{x:2860,y:460,w:110},{x:3080,y:395,w:250,rampRight:0}
   ]:[
-    {x:2470,y:450,w:60},{x:2500,y:395,w:80,ramp:100},{x:2840,y:455,w:100},{x:3060,y:370,w:240}
+    {x:2470,y:450,w:60},{x:2500,y:395,w:80,ramp:100},{x:2840,y:455,w:100},{x:3060,y:370,w:240,rampRight:0}
   ]));
   const terraces=index===0?[]:[{x:665,y:350,w:65,h:160}];
   const holes=index===2?[{x:515,y:430,w:150,open:false,armed:false,triggerX:700,plateId:id}]:[];

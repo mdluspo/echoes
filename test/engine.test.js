@@ -271,6 +271,12 @@ test('levels four and five save a halfway checkpoint for death respawns',()=>{
     game.reset();assert.equal(game.player.x,game.section.spawn.x);
   }
 });
+test('button-topped rises do not make a walkable right ramp',()=>{
+  const fourth=createLevel(3),terrace=fourth.terraces[0];
+  assert.equal(terrace.rampRight,0);assert.equal(terrainY(fourth,terrace.x+terrace.w+30),510);
+  assert.equal(fourth.woodPlatforms.length,1);assert.ok(fourth.woodPlatforms[0].x>fourth.bridges[1].x+fourth.bridges[1].w);
+  for(const index of [0,1,2])assert.equal(createLevel(index).mounds.at(-1).rampRight,0);
+});
 
 test('Echoes replay the last three seconds at the original speed, including recorded waits',()=>{
   const game=new Adventure();frames(game,20,{right:true});frames(game,1000);frames(game,20,{left:true});
