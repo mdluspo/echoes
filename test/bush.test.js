@@ -21,7 +21,8 @@ test('earlier trails establish safe bushes; the predator has room before the fin
 test('looking at the bush freezes it and looking away lets it close the distance',()=>{
   const {game,bush}=encounter(),home=bush.x;frames(game,25);assert.equal(bush.x,home);assert.equal(bush.phase,'frozen');
   game.player.facing=-1;frames(game,220);assert.ok(bush.x<home-90);assert.notEqual(bush.phase,'frozen');
-  const x=bush.x;game.player.facing=1;frames(game,20);assert.equal(bush.x,x);assert.equal(game.dead,false);
+  game.player.x=bush.x-200;game.player.y=terrainY(game.level,game.player.x);game.player.facing=1;
+  const x=bush.x;frames(game,20);assert.equal(bush.x,x);assert.equal(game.dead,false);
 });
 
 test('the predator stays harmless until the hamster passes it',()=>{
@@ -51,7 +52,7 @@ test('a recorded turn lets the bush move again even before its Echo expires',()=
 });
 
 test('close contact reveals teeth, swallows the hamster and keeps chewing while the body disappears',()=>{
-  const {game,bush}=encounter();place(game,bush.x-60);const deathX=game.player.x;
+  const {game,bush}=encounter();bush.chaseDelay=0;place(game,bush.x-60);const deathX=game.player.x;
   game.update();assert.equal(bush.phase,'opening');assert.equal(game.dead,false);
   for(let i=0;i<20&&!game.dead;i++)game.update();assert.equal(game.dead,true);assert.equal(game.deathReason,'bush');assert.equal(game.deathBody.eater,bush);assert.equal(bush.reveal,1);
   frames(game,6);assert.ok(game.deathBody.scale<1);assert.ok(game.deathBody.x>deathX);assert.equal(bush.phase,'chewing');
@@ -60,7 +61,7 @@ test('close contact reveals teeth, swallows the hamster and keeps chewing while 
 });
 
 test('a quick high jump escapes the opening mouth and its bite never reaches a distant hamster',()=>{
-  const {game,bush}=encounter();place(game,bush.x-60);game.update();game.update({jumpPressed:true,jumpHeld:true});frames(game,25,{jumpHeld:true});
+  const {game,bush}=encounter();bush.chaseDelay=0;place(game,bush.x-60);game.update();game.update({jumpPressed:true,jumpHeld:true});frames(game,25,{jumpHeld:true});
   assert.equal(game.dead,false);assert.ok(game.player.y<bush.y-105);assert.notEqual(bush.phase,'chewing');
   place(game,bush.x+200);frames(game,15);assert.equal(game.dead,false);
 });
