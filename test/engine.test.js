@@ -245,6 +245,13 @@ test('a big closed log pile cannot be bypassed with repeated jumps',()=>{
   for(let i=0;i<500;i++)game.update({right:true,jumpPressed:i%65===0,jumpHeld:true});
   assert.ok(game.player.x<pile.x+pile.w/2);assert.ok(game.logStacks.get(pile.x).homes.every(log=>!logTouchesActor(log,game.player)));assert.ok(pile.h>PHYSICS.jump**2/(2*PHYSICS.gravity));
 });
+test('a closed log pile is not a climbable platform',()=>{
+  const game=new Adventure(),pile=game.level.logPiles[0];
+  game.player.x=pile.x+pile.w/2;game.player.y=300;game.player.grounded=false;game.player.vy=0;
+  for(let i=0;i<90;i++)game.update();
+  assert.equal(game.player.y,terrainY(game.level,game.player.x));
+  assert.equal(game.player.grounded,true);
+});
 test('completed scenery retires only once entirely behind the view, and locks backtracking',()=>{
   const game=new Adventure();finishCurrentSection(game);
   game.retireBehind(SECTION_LENGTH-1);assert.equal(game.sections[0].retired,false);assert.equal(game.cameraFloor,0);

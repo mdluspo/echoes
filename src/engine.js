@@ -60,13 +60,18 @@ function moveAgainstLogs(actor,axis,previous,logs){
 function pushOutOfLogs(actor,logs){
   if(!logs.some(log=>logTouchesActor(log,actor)))return;
   const choices=[];
-  for(const [axis,sign] of [['x',-1],['x',1],['y',-1]]){
+  // Logs are vertical barriers, never walkable platforms. Only resolve side
+  // overlap so a player cannot be pushed or settled onto the top of a pile.
+  for(const [axis,sign] of [['x',-1],['x',1]]){
     const origin=actor[axis];let distance=1;
     while(distance<=512){actor[axis]=origin+sign*distance;if(!logs.some(log=>logTouchesActor(log,actor)))break;distance*=2;}
     if(distance<=512){let lo=0,hi=distance;for(let i=0;i<12;i++){const mid=(lo+hi)/2;actor[axis]=origin+sign*mid;if(logs.some(log=>logTouchesActor(log,actor)))lo=mid;else hi=mid;}choices.push({axis,value:origin+sign*hi,distance:hi});}
     actor[axis]=origin;
   }
-  choices.sort((a,b)=>a.distance-b.distance);if(choices[0]){actor[choices[0].axis]=choices[0].value;actor.vx=0;actor.vy=0;}
+  choices.sort((a,b)=>a.distance-b.distance);if(choices[0]){
+    actor[choices[0].axis]=choices[0].value;
+    if(choices[0].axis==='x')actor.vx=0;else actor.vy=0;
+  }
 }
 function projectileTerrain(level,left,right){
   const xs=new Set([left,right]);for(let x=Math.ceil(left/2)*2;x<right;x+=2)xs.add(x);
@@ -428,9 +433,6 @@ export class Adventure {
       }
     }
     const falling=p.y>=previousY;
-    if(moveAgainstLogs(p,'y',previousY,pileLogs)){
-      if(falling){if(!wasGrounded&&p.vy>160){p.landing=.16;events.push('land');}p.grounded=true;}p.vy=0;
-    }
     if (p.y > 950 || this.level.thorns.some(t => overlaps(p, t))) {
       return this.kill(p.y>950?'fall':'brambles');
     }
