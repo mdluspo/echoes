@@ -83,11 +83,8 @@ export class Illustrator{
     this.cameraReady=true;game.view={left:this.camera,top:this.cameraY,right:this.camera+this.viewWidth,bottom:this.cameraY+this.viewHeight};game.updateSkyMessages(this.camera,this.viewWidth);game.retireBehind(this.camera);
     c.setTransform(this.dpr,0,0,this.dpr,0,0);c.fillStyle=WHITE;c.fillRect(0,0,this.width,this.height);c.save();c.scale(this.scale,this.scale);c.translate(-this.camera,-this.cameraY);
     this.background(c,t);this.pits(c,l,t);
-    for(const message of game.skyMessages){
-      if(message.x+220<this.camera||message.x-220>this.camera+this.viewWidth)continue;
-      c.save();c.translate(message.x,message.y);c.rotate(-.025);c.font='700 28px "IM Fell English",Georgia,serif';c.textAlign='center';c.strokeStyle=WHITE;c.lineWidth=4;c.lineJoin='round';c.strokeText(message.text,0,0);c.fillStyle=INK;c.fillText(message.text,0,0);c.strokeStyle=INK;c.lineWidth=.55;c.strokeText(message.text,0,0);c.restore();
-    }
     for(const g of groundBanks(l))this.ground(c,g,l,t);
+    if(l.index===0)this.instruction(c,"Echoes copy your last 3 seconds of actions.",1700,300);
     for(const bush of l.bushes)if(bush.x+150>this.camera&&bush.x-150<this.camera+this.viewWidth)this.bush(c,bush,t);
     for(const bridge of l.bridges)this.bridge(c,bridge);
     for(const shed of l.sheds)this.shed(c,shed,l);
@@ -105,7 +102,7 @@ export class Illustrator{
     for(const log of game.projectiles)this.log(c,log);
     for(const attack of game.attacks){const x=attack.pile.x+attack.pile.w/2,y=attack.pile.y-18;line(c,[[x-12,y-5],[x-20,y-17]],INK,2);line(c,[[x,y-9],[x,y-24]],INK,2);line(c,[[x+12,y-5],[x+20,y-17]],INK,2);}
     for(const section of l.sections)if(!section.retired){if(section.exit.runaway)this.snare(c,section.exit,game.pressed(section.exit.requires));this.exit(c,section.exit,section.index<game.activeIndex||game.won,t);}
-    for(const p of l.plates)this.plate(c,p,game.pressed(p.id));
+    for(const p of l.plates)this.plate(c,p,game.pressed(p.id),l.index===0&&p.id==='A');
     for(const goose of l.geese)if(goose.x+90>this.camera&&goose.x-90<this.camera+this.viewWidth)this.goose(c,goose,t);
     for(const echo of game.echoes){
       if(!game.echoActive(echo))continue;
@@ -171,10 +168,16 @@ export class Illustrator{
     oval(c,log.len/2-7,0,10,log.r,WHITE,INK,1.8);oval(c,log.len/2-7,0,5,log.r*.56,null,INK,1);
     line(c,[[-log.len*.32,-5],[-log.len*.05,-4],[log.len*.12,-6]],INK,1);line(c,[[-log.len*.3,7],[log.len*.13,6]],INK,.8);c.restore();
   }
-  plate(c,p,on){
+  plate(c,p,on,showHint=false){
+    if(showHint){
+      this.instruction(c,"Press 'E' to place an Echo",p.x,p.y-54,16);
+    }
     ink(c,q=>{q.moveTo(p.x-26,p.y-2);q.lineTo(p.x-21,p.y-8);q.lineTo(p.x+23,p.y-7);q.lineTo(p.x+27,p.y-2);q.closePath();},{fill:on?INK:WHITE,color:INK,width:2});
     for(let i=0;i<7;i++)line(c,[[p.x-18+i*6,p.y-6],[p.x-21+i*6,p.y-2]],on?WHITE:INK,1.2);
     this.rune(c,p.x,p.y-20,p.id,8,on?INK:INK);
+  }
+  instruction(c,text,x,y,size=15){
+    c.save();c.font=`${size}px "IM Fell English",Georgia,serif`;c.textAlign='center';c.textBaseline='middle';c.strokeStyle=WHITE;c.lineWidth=4;c.lineJoin='round';c.strokeText(text,x,y);c.fillStyle=INK;c.fillText(text,x,y);c.restore();
   }
   rune(c,x,y,id,size=8,color=INK){
     c.save();c.translate(x,y);c.scale(size/8,size/8);

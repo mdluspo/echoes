@@ -131,16 +131,18 @@ export function createLevel(index,memory={}){
       geese:bases.map((x,i)=>({x:start+x+1400,homeX:start+x+1400,y:510,bellId:['E','E2','E3'][i],section:index,phase:'idle',direction:-1,stride:0,timer:0,windup:i===1?.35:.75-i*.1,speed:i===1?PHYSICS.speed:740+i*90,approachSpeed:i===1?PHYSICS.speed*2.4:null,chase:i===1})),
       exit:{x:end,y:510},trap:{enabled:false,chance:0,speed:1800,windup:.5,shots:0,waves:0},retired:false});
   }
-  const gaps=index===0?[740,900,1530,1680]:[780,920,1600,1740];
+  // Button-topped opening ledges end directly at the first gap; there is no
+  // small walkable shelf on their right-hand side.
+  const gaps=index===0?[740,900,1530,1680]:[730,920,1600,1740];
   const extraGaps=index===0?[2620,2770,3330,3490]:[2580,2760,3300,3500];
   const ground=[{x:index===0?-300:0,y:510,w:gaps[0]+(index===0?300:0),h:700},{x:gaps[1],y:510,w:gaps[2]-gaps[1],h:700},{x:gaps[3],y:510,w:extraGaps[0]-gaps[3],h:700},{x:extraGaps[1],y:510,w:extraGaps[2]-extraGaps[1],h:700},{x:extraGaps[3],y:510,w:SECTION_LENGTH-extraGaps[3],h:700}];
   const mounds=index===0?[
-    {x:235,y:455,w:125},{x:390,y:390,w:220},{x:1360,y:445,w:90},{x:1420,y:380,w:110},{x:1830,y:450,w:135},{x:2040,y:395,w:160},{x:660,y:355,w:100,ramp:140,cover:true}
+    {x:235,y:455,w:125},{x:390,y:390,w:220,rampRight:0},{x:1360,y:445,w:90},{x:1420,y:380,w:110},{x:1830,y:450,w:135},{x:2040,y:395,w:160},{x:660,y:355,w:100,ramp:140,cover:true}
   ]:[{x:240,y:430,w:280,rampRight:90},{x:1380,y:430,w:220}];
   // Keep the approach to each log barrier below jump-over height.
   if(index===0)mounds.splice(4,2);
   mounds.push(...(index===0?[
-    {x:2460,y:455,w:100},{x:2540,y:415,w:80,ramp:95},{x:2860,y:460,w:110},{x:3080,y:395,w:250}
+    {x:2460,y:455,w:100},{x:2540,y:415,w:80,ramp:95},{x:2860,y:460,w:110},{x:3080,y:395,w:250,rampRight:0}
   ]:[
     {x:2470,y:450,w:60},{x:2500,y:395,w:80,ramp:100},{x:2840,y:455,w:100},{x:3060,y:370,w:240}
   ]));
