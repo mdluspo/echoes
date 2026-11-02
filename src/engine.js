@@ -73,6 +73,14 @@ function pushOutOfLogs(actor,logs){
     if(choices[0].axis==='x')actor.vx=0;else actor.vy=0;
   }
 }
+function raisedBarrierBetween(level,actor,x){
+  const left=Math.min(actor.x,x),right=Math.max(actor.x,x),head=actor.y-PHYSICS.height;
+  for(let sample=Math.ceil(left/4)*4;sample<=right;sample+=4){
+    const floor=terrainY(level,sample);
+    if(floor!==null&&floor<head)return true;
+  }
+  return false;
+}
 function projectileTerrain(level,left,right){
   const xs=new Set([left,right]);for(let x=Math.ceil(left/2)*2;x<right;x+=2)xs.add(x);
   // Keep exact cliff and ledge faces; floor-only samples miss horizontal radius contacts.
@@ -114,8 +122,10 @@ export function createLevel(index,memory={}){
     return decorateBushes({...CHAPTERS[index],index,start,end,width:end,spawn:{x:start+100,y:510},
       ground:shift([{x:0,y:510,w:900,h:700},{x:1360,y:510,w:940,h:700},{x:2760,y:510,w:1210,h:700},{x:4140,y:510,w:2160,h:700}]),
       mounds:shift([{x:2920,y:430,w:60,rampRight:90}]),terraces:shift([{x:3075,y:350,w:65,h:160}]),holes:[],thorns:[],seeds:[],bridges,sheds:shift([{x:1680,y:510,w:150,roofY:300}]),
+      woodPlatforms:shift([{x:3150,y:430,w:100,h:12,kind:'wood'}]),
       logPiles:shift([{x:1900,y:288,w:260,h:222,requires:['D3']},{x:3450,y:288,w:260,h:222,requires:['D6']},{x:4650,y:288,w:260,h:222,requires:['D7']}]),
       plates:shift([{id:'D',x:480,y:510},{id:'D2',x:740,y:510},{id:'D3',x:1550,y:510,homing:true,attackChance:1},{id:'D4',x:2210,y:510},{id:'D6',x:3100,y:350,cover:{x:start+3055,w:34}},{id:'D7',x:4370,y:510},{id:'D5',x:5980,y:510}]),
+      checkpoint:{x:start+3000},
       exit:{x:start+5500,y:510,homeX:start+5500,trapX:start+5900,minX:start+5450,maxX:start+6000,direction:1,running:false,caught:false,stride:0,requires:'D5',runaway:true},
       trap:{enabled:true,chance:.6,speed:1800,windup:.5,shots:24,waves:1},retired:false});
   }
@@ -129,7 +139,7 @@ export function createLevel(index,memory={}){
       logPiles:shift(bases.map((x,i)=>({x:x+1520,y:288,w:260,h:222,requires:[['E','E2','E3'][i]]}))),
       fences:shift(bases.map(x=>({x:x+1130,y:510,w:72,h:190,broken:false,debris:[]}))),
       geese:bases.map((x,i)=>({x:start+x+1400,homeX:start+x+1400,y:510,bellId:['E','E2','E3'][i],section:index,phase:'idle',direction:-1,stride:0,timer:0,windup:i===1?.35:.75-i*.1,speed:i===1?PHYSICS.speed:740+i*90,approachSpeed:i===1?PHYSICS.speed*2.4:null,chase:i===1})),
-      exit:{x:end,y:510},trap:{enabled:false,chance:0,speed:1800,windup:.5,shots:0,waves:0},retired:false});
+      checkpoint:{x:start+3970},exit:{x:end,y:510},trap:{enabled:false,chance:0,speed:1800,windup:.5,shots:0,waves:0},retired:false});
   }
   // Button-topped opening ledges end directly at the first gap; there is no
   // small walkable shelf on their right-hand side.
@@ -217,7 +227,7 @@ export class Adventure {
     if(!CHAPTERS[index])throw new Error('Unknown trail section');
     this.random=random;this.memory={...memory};this.activeIndex=index;this.cameraFloor=index*SECTION_LENGTH;this.completed=Array.from({length:index},(_,i)=>i);
     this.sections=CHAPTERS.map((_,i)=>({...createLevel(i,this.memory),retired:i<index}));this.cameraFloor=this.sections[index].start;this.level={sections:this.sections,width:this.sections.at(-1).end+300};
-    this.echoes=[];this.seeds=new Set();this.logStacks=new Map();this.route=null;this.attempts=1;this.stats={jumps:0,falls:0,echoes:0};this.pressCounts=new Map();this.playerPressCounts=new Map();this.skyMessages=memory.firstDeath&&!memory.firstDeathDismissed&&memory.firstDeath.section>=index?[{...memory.firstDeath,text:'Baviloya is Watching You'}]:[];this.hasWitnessedDeath=memory.hasWitnessedDeath===true||Boolean(memory.firstDeath);this.echoSerial=0;this.projectiles=[];this.attacks=[];this.dead=false;this.deathTimer=0;this.syncWorld();this.restartTake();
+    this.echoes=[];this.seeds=new Set();this.logStacks=new Map();this.route=null;this.attempts=1;this.stats={jumps:0,falls:0,echoes:0};this.pressCounts=new Map();this.playerPressCounts=new Map();this.skyMessages=memory.firstDeath&&!memory.firstDeathDismissed&&memory.firstDeath.section>=index?[{...memory.firstDeath,text:'Baviloya is Watching You'}]:[];this.hasWitnessedDeath=memory.hasWitnessedDeath===true||Boolean(memory.firstDeath);this.echoSerial=0;this.projectiles=[];this.attacks=[];this.dead=false;this.deathTimer=0;this.syncWorld();this.checkpoint={...this.section.spawn};this.restartTake();
   }
   get section(){return this.sections[this.activeIndex];}
   updateSkyMessages(cameraLeft,viewWidth){
@@ -225,7 +235,7 @@ export class Adventure {
     if(visible.length!==this.skyMessages.length){this.skyMessages=visible;this.memory.firstDeathDismissed=true;}
   }
   syncWorld(){
-    for(const key of ['ground','mounds','plates','logPiles','thorns','seeds','terraces','holes','bridges','sheds','geese','fences','bushes','platforms'])this.level[key]=this.sections.filter(s=>!s.retired).flatMap(s=>s[key]||[]);
+    for(const key of ['ground','mounds','plates','logPiles','thorns','seeds','terraces','holes','bridges','sheds','geese','fences','bushes','platforms','woodPlatforms'])this.level[key]=this.sections.filter(s=>!s.retired).flatMap(s=>s[key]||[]);
     this.level.ground=this.level.ground.reduce((banks,bank)=>{const last=banks.at(-1);if(last&&last.x+last.w===bank.x&&last.y===bank.y)last.w+=bank.w;else banks.push({...bank});return banks;},[]);
     for(const bush of this.level.bushes)if(!Number.isFinite(bush.y))bush.y=terrainY(this.level,bush.x)??510;
     Object.assign(this.level,{index:this.activeIndex,region:this.section.region,limit:this.section.limit,spawn:this.section.spawn,exit:this.sections.at(-1).exit});
@@ -246,14 +256,14 @@ export class Adventure {
     if(index===CHAPTERS.length-1){this.won=true;this.player.vx=0;events.push('win');return;}
     this.activeIndex++;this.echoes=[];this.tick=0;this.route=null;this.stats={jumps:0,falls:0,echoes:0};
     this.sections[this.activeIndex]=createLevel(this.activeIndex,this.memory);this.level.sections=this.sections;
-    this.syncWorld();this.recording=[snapshot(this.player)];this.echoFallback=null;this.recordingStarted=false;this.lastPressed=new Set();this.lastPlateActors=new Map();events.push('section');
+    this.syncWorld();this.checkpoint={...this.section.spawn};this.recording=[snapshot(this.player)];this.echoFallback=null;this.recordingStarted=false;this.lastPressed=new Set();this.lastPlateActors=new Map();events.push('section');
   }
   restartTake({preserveWorld=false}={}) {
-    for(const bush of this.level.bushes){bush.activated=false;if(!preserveWorld||!bush.berries)Object.assign(bush,{x:bush.homeX,y:terrainY(this.level,bush.homeX),phase:bush.berries?'idle':'dormant',age:0,open:0,reveal:0,stride:0,facing:1,vy:0,grounded:true,jumpCooldown:0});}
+    for(const bush of this.level.bushes){bush.activated=false;if(!preserveWorld||!bush.berries)Object.assign(bush,{x:bush.homeX,y:terrainY(this.level,bush.homeX),phase:bush.berries?'idle':'dormant',age:0,open:0,reveal:0,stride:0,facing:1,vy:0,grounded:true,jumpCooldown:0,chaseDelay:0});}
     if(!preserveWorld)for(const platform of this.level.platforms)Object.assign(platform,{x:platform.homeX,elapsed:0,running:false,triggered:false,stride:0});
     if(!preserveWorld){for(const goose of this.level.geese)Object.assign(goose,{x:goose.homeX,y:terrainY(this.level,goose.homeX),phase:'idle',direction:-1,stride:0,timer:0});for(const fence of this.level.fences)Object.assign(fence,{broken:false,debris:[]});for(const plate of this.level.plates)if(plate.bell)plate.ring=0;}
     if(!preserveWorld){for(const stack of this.logStacks.values())stack.reset();for(const section of this.sections){for(const bridge of section.bridges)bridge.progress=0;if(section.exit.runaway)Object.assign(section.exit,{x:section.exit.homeX,direction:1,running:false,caught:false,stride:0});}}
-    this.player = { ...this.level.spawn, vx:0, vy:0, grounded:true, facing:1, landing:0, stride:0, gait:'idle' };
+    this.player = { ...this.checkpoint, vx:0, vy:0, grounded:true, facing:1, landing:0, stride:0, gait:'idle' };
     this.dead=false;this.deathTimer=0;this.deathBody=null;for(const section of this.sections){section.trapFired=false;section.trapResolved=false;section.retreated=false;for(const plate of section.plates){plate.trapResolved=false;plate.retreated=false;}for(const hole of section.holes){hole.open=false;hole.armed=false;}}if(!preserveWorld){this.projectiles=[];this.attacks=[];}for(const echo of this.echoes)echo.startTick=0;
     this.lastPlateActors=new Map();
     this.tick = 0; this.time = 0; this.won = false; this.coyote = PHYSICS.coyote; this.jumpBuffer = 0;
@@ -301,7 +311,7 @@ export class Adventure {
     const clip=this.echoRecording;this.echoFallback=!clearRecording&&clip.length>=12?clip.map(frame=>({...frame})):null;
     this.echoes=[];this.recording=[snapshot(this.player)];this.recordingStarted=false;this.recordingFull=false;
   }
-  reset() { this.echoes = []; this.seeds.clear(); this.attempts = 1; this.route = null;this.stats={jumps:0,falls:0,echoes:0};this.pressCounts.clear();this.playerPressCounts.clear(); this.restartTake(); }
+  reset() { this.echoes = []; this.seeds.clear(); this.attempts = 1; this.route = null;this.stats={jumps:0,falls:0,echoes:0};this.pressCounts.clear();this.playerPressCounts.clear();this.checkpoint={...this.section.spawn}; this.restartTake(); }
   kill(reason){
     if(this.dead)return [];
     if(!this.hasWitnessedDeath){
@@ -316,7 +326,7 @@ export class Adventure {
   updateBushes(dt,damage=!this.dead){
     return stepBushes(this.level.bushes,this.actors,damage?this.player:null,dt,x=>{
       const ground=terrainY(this.level,x);let floor=ground;
-      for(const solid of [...this.level.platforms.filter(p=>!p.profile),...this.level.fences.filter(f=>!f.broken).map(f=>({x:f.x,w:f.w,y:f.y-f.h}))])if(x>=solid.x&&x<=solid.x+solid.w)floor=Math.min(floor??Infinity,solid.y);
+      for(const solid of [...this.level.platforms.filter(p=>!p.profile),...this.level.woodPlatforms,...this.level.fences.filter(f=>!f.broken).map(f=>({x:f.x,w:f.w,y:f.y-f.h}))])if(x>=solid.x&&x<=solid.x+solid.w)floor=Math.min(floor??Infinity,solid.y);
       for(const pile of this.level.logPiles){const stack=this.logStacks.get(pile.x);if(stack.solid)for(const log of stack.logs)if(log.built&&log.opacity>0&&Math.abs(x-log.x)<log.len/2)floor=Math.min(floor??Infinity,log.y-log.r);}
       return floor;
     });
@@ -350,7 +360,11 @@ export class Adventure {
       }
       const from={x:log.x,y:log.y,angle:log.angle};log.age+=dt;
       if(log.deflected)stepDebris(log,dt,x=>terrainY(this.level,x));else{log.x+=log.vx*dt;log.y+=log.vy*dt;log.angle+=log.spin*dt;}
+      // A log that has touched raised ground is debris from this point on.
+      // Keep the rule explicit even if a projectile arrives with stale hostile state.
+      if(log.deflected||log.deflectedBy||log.bounces>0)log.hostile=false;
       const p=this.player,body={x:p.x-PHYSICS.width/2,y:p.y-PHYSICS.height,w:PHYSICS.width,h:PHYSICS.height};
+      if(log.stage==='returning'&&raisedBarrierBetween(this.level,p,log.x))log.hostile=false;
       const collision=log.deflected||log.stage==='outbound'?null:sweepLog(this.level,log,from,log,body,!this.dead);
       if(collision?.kind==='hit'){hit=true;this.lastHitDirection=Math.sign(log.vx);}
       if(collision?.kind==='blocked'||collision?.kind==='roof')Object.assign(log,collision.pose,{hostile:false,deflected:true,deflectedBy:collision.kind,stage:'debris',vx:(this.random()<.5?-1:1)*(500+this.random()*500),vy:-400-this.random()*400,spin:(this.random()-.5)*20,bounces:0,sleeping:false});
@@ -393,7 +407,7 @@ export class Adventure {
     if(p.grounded&&direction&&p.vx*direction<0)p.vx=0;
     p.vx = approach(p.vx, direction * (input.walk ? PHYSICS.walkSpeed : PHYSICS.speed), (direction ? (p.grounded ? 2300 : 1700) : (p.grounded ? 2800 : 550)) * dt);
     p.gait = Math.abs(p.vx)<18?'idle':input.walk?'walk':'run';
-    const solids = [...this.level.terraces,...this.level.platforms.filter(p=>!p.profile),...this.level.sheds.map(s=>({x:s.x-14,y:s.roofY-20,w:s.w+28,h:30})),...this.level.fences.filter(f=>!f.broken).map(f=>({x:f.x,y:f.y-f.h,w:f.w,h:f.h}))];
+    const solids = [...this.level.terraces,...this.level.platforms.filter(p=>!p.profile),...this.level.woodPlatforms,...this.level.sheds.map(s=>({x:s.x-14,y:s.roofY-20,w:s.w+28,h:30})),...this.level.fences.filter(f=>!f.broken).map(f=>({x:f.x,y:f.y-f.h,w:f.w,h:f.h}))];
     const followedGround=p.grounded;
     p.x += p.vx * dt;
     for (const solid of solids) if (overlaps(p, solid)) {
@@ -433,6 +447,11 @@ export class Adventure {
       if (solids.includes(surface) && p.vy < 0 && previousY - PHYSICS.height >= surface.y + surface.h && p.y - PHYSICS.height <= surface.y + surface.h) {
         p.y = surface.y + surface.h + PHYSICS.height; p.vy = 0;
       }
+    }
+    const halfway=this.section.checkpoint;
+    if(halfway&&p.x>=halfway.x&&this.checkpoint.x<halfway.x){
+      const checkpointY=terrainY(this.level,halfway.x)??510;
+      this.checkpoint={x:halfway.x,y:checkpointY};
     }
     const falling=p.y>=previousY;
     if (p.y > 950 || this.level.thorns.some(t => overlaps(p, t))) {

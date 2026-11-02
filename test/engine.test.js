@@ -260,6 +260,17 @@ test('completed scenery retires only once entirely behind the view, and locks ba
   frames(game,200,{left:true});assert.ok(game.player.x>=SECTION_LENGTH+17);assert.equal(game.activeIndex,1);
   game.restartTake();assert.equal(game.player.x,SECTION_LENGTH+100);assert.equal(game.cameraFloor,SECTION_LENGTH);
 });
+test('levels four and five save a halfway checkpoint for death respawns',()=>{
+  for(const index of [3,4]){
+    const game=new Adventure(index),half=game.section.checkpoint.x;
+    assert.equal(game.player.x,game.section.spawn.x);
+    Object.assign(game.player,{x:half+1,y:terrainY(game.level,half+1)??510,grounded:true});game.update();
+    assert.equal(game.checkpoint.x,half);
+    game.kill('fall');while(game.dead)game.update();
+    assert.equal(game.player.x,half);assert.equal(game.player.y,game.checkpoint.y);
+    game.reset();assert.equal(game.player.x,game.section.spawn.x);
+  }
+});
 
 test('Echoes replay the last three seconds at the original speed, including recorded waits',()=>{
   const game=new Adventure();frames(game,20,{right:true});frames(game,1000);frames(game,20,{left:true});

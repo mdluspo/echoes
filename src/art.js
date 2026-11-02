@@ -87,6 +87,7 @@ export class Illustrator{
     if(l.index===0)this.instruction(c,"Echoes copy your last 3 seconds of actions.",1700,300);
     for(const bush of l.bushes)if(bush.x+150>this.camera&&bush.x-150<this.camera+this.viewWidth)this.bush(c,bush,t);
     for(const bridge of l.bridges)this.bridge(c,bridge);
+    for(const platform of l.woodPlatforms||[])this.woodPlatform(c,platform);
     for(const shed of l.sheds)this.shed(c,shed,l);
     for(const fence of l.fences)this.fence(c,fence);
     for(const plate of l.plates)if(plate.bell)this.bell(c,plate,t);
@@ -201,6 +202,12 @@ export class Illustrator{
       for(let x=26;x<half;x+=60)line(c,[[x,0],[x,-60+x/half*27]],INK,1.2);
       c.restore();
     }
+  }
+  woodPlatform(c,p){
+    if(p.x+p.w<this.camera||p.x>this.camera+this.viewWidth)return;
+    ink(c,q=>{q.rect(p.x,p.y,p.w,p.h);},{fill:WHITE,color:INK,width:2.2});
+    line(c,[[p.x+8,p.y+4],[p.x+p.w-8,p.y+4]],INK,1);
+    for(const x of [p.x+12,p.x+p.w-12])line(c,[[x,p.y+p.h],[x,p.y+p.h+12]],INK,1.5);
   }
   shed(c,s,l){
     for(const x of [s.x+10,s.x+s.w-10]){
