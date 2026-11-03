@@ -16,6 +16,7 @@ export const CHAPTERS = [
   { name:'The path remembers', region:'The Remembering Grove', limit:2 },
   { name:'Not so fast', region:'The Contrary Crossing', limit:2, length:6000, holdSeconds:16 },
   { name:'Mind the goose', region:'The Honking Meadow', limit:2, length:7940, holdSeconds:22 },
+  { name:'The Canopy', region:'The Hollow Tree', limit:2, length:4000 }
 ];
 const approach = (value, target, amount) => value < target ? Math.min(target, value + amount) : Math.max(target, value - amount);
 const overlaps = (a, b) => a.x + PHYSICS.width / 2 > b.x && a.x - PHYSICS.width / 2 < b.x + b.w && a.y > b.y && a.y - PHYSICS.height < b.y + b.h;
@@ -141,6 +142,17 @@ export function createLevel(index,memory={}){
       geese:bases.map((x,i)=>({x:start+x+1400,homeX:start+x+1400,y:510,bellId:['E','E2','E3'][i],section:index,phase:'idle',direction:-1,stride:0,timer:0,windup:i===1?.35:.75-i*.1,speed:i===1?PHYSICS.speed:740+i*90,approachSpeed:i===1?PHYSICS.speed*2.4:null,chase:i===1})),
       checkpoint:{x:start+3970},exit:{x:end,y:510},trap:{enabled:false,chance:0,speed:1800,windup:.5,shots:0,waves:0},retired:false});
   }
+  if(index===5){
+    const shift=items=>items.map(item=>({...item,x:item.x+start,section:index}));
+    return decorateBushes({...CHAPTERS[index],index,start,end,width:end,vertical:true,spawn:{x:start+120,y:510},
+      ground:shift([{x:0,y:510,w:760,h:700},{x:1240,y:160,w:2760,h:700}]),mounds:[],terraces:[],holes:[],thorns:[],seeds:[],bridges:[],sheds:[],logPiles:[],plates:[],fences:[],geese:[],
+      tree:shift([{x:180,y:70,w:850,h:450}]),woodPlatforms:shift([
+        {x:300,y:440,w:170,h:14,kind:'wood'},{x:570,y:370,w:170,h:14,kind:'wood'},
+        {x:330,y:300,w:170,h:14,kind:'wood'},{x:600,y:230,w:170,h:14,kind:'wood'},
+        {x:390,y:160,w:190,h:14,kind:'wood'},{x:760,y:245,w:170,h:14,kind:'wood'},
+        {x:980,y:195,w:190,h:14,kind:'wood'}
+      ]),checkpoint:{x:start+2100,y:160},exit:{x:end,y:160},trap:{enabled:false,chance:0,speed:1800,windup:.5,shots:0,waves:0},retired:false});
+  }
   // Button-topped opening ledges end directly at the first gap; there is no
   // small walkable shelf on their right-hand side.
   const gaps=index===0?[740,900,1530,1680]:[730,920,1600,1740];
@@ -235,7 +247,7 @@ export class Adventure {
     if(visible.length!==this.skyMessages.length){this.skyMessages=visible;this.memory.firstDeathDismissed=true;}
   }
   syncWorld(){
-    for(const key of ['ground','mounds','plates','logPiles','thorns','seeds','terraces','holes','bridges','sheds','geese','fences','bushes','platforms','woodPlatforms'])this.level[key]=this.sections.filter(s=>!s.retired).flatMap(s=>s[key]||[]);
+    for(const key of ['ground','mounds','plates','logPiles','thorns','seeds','terraces','holes','bridges','sheds','geese','fences','bushes','platforms','woodPlatforms','tree'])this.level[key]=this.sections.filter(s=>!s.retired).flatMap(s=>s[key]||[]);
     this.level.ground=this.level.ground.reduce((banks,bank)=>{const last=banks.at(-1);if(last&&last.x+last.w===bank.x&&last.y===bank.y)last.w+=bank.w;else banks.push({...bank});return banks;},[]);
     for(const bush of this.level.bushes)if(!Number.isFinite(bush.y))bush.y=terrainY(this.level,bush.x)??510;
     Object.assign(this.level,{index:this.activeIndex,region:this.section.region,limit:this.section.limit,spawn:this.section.spawn,exit:this.sections.at(-1).exit});

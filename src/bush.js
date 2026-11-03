@@ -1,5 +1,5 @@
 export function decorateBushes(level){
-  const positions=[[75,1460,2910],[75,1450,2890],[75,1450,2890],[200,1420,4230,5620],[980,3570,4750,7660]][level.index];
+  const positions=[[75,1460,2910],[75,1450,2890],[75,1450,2890],[200,1420,4230,5620],[980,3570,4750,7660],[]][level.index]||[];
   level.bushes=positions.map((x,i)=>({x:level.start+x,homeX:level.start+x,section:level.index,berries:true,variant:i,phase:'idle',age:0,open:0,reveal:0}));
   if(level.index===4){
     const homeX=level.plates.filter(plate=>plate.bell).at(-1).x-1250;

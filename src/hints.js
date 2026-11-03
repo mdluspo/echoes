@@ -18,5 +18,9 @@ export const TRAIL_HINTS = [
     'Each fresh bell press calls its goose again. A continuously held bell stays quiet. Let an Echo hold the plate while you retreat onto raised ground; the goose breaks the fence and crashes into the slope.',
     'The second bell sends its grassy cover sliding left for three seconds. Run back with it. The goose rushes up close behind you, then matches your running speed. You still have room to jump. Wait behind the stopped rise until it crashes.',
     'A berryless bush waits before the creek leading to the third bell and wakes after you pass it. It follows you and can jump. Leave an Echo facing it before crossing the creek, then use your other Echo for the final bell. Keep clear of its mouth even while watching.'
+  ],
+  [
+    'The hollow tree is the first vertical trail. Jump between the branches on opposite sides of the trunk, then climb out into the canopy.',
+    'The branches are safe platforms, but the ground is far below. If you miss, use the lower branches to try again.'
   ]
 ];

@@ -116,6 +116,7 @@ test('death flings the body backward, flickers it, then removes it before respaw
 
 function finishCurrentSection(game){
   const section=game.section,start=section.start,index=section.index;
+  if(index===5){finishTreeSection(game);return;}
   if(index===3){finishFourthSection(game);return;}
   if(index===4){finishFifthSection(game);return;}
   if(index===0){
@@ -189,6 +190,7 @@ test('respawn folds the linked bridges and restores the runaway flag with no pen
 
 function finishFifthSection(game){
   const fifth=game.section,start=fifth.start;
+  game.checkpoint={...fifth.spawn};
   for(const [i,base]of [0,2720,5610].entries()){
     walkTo(game,start+base+550);if(i!==2)game.resetEcho();walkTo(game,start+base+570);frames(game,15);
     walkTo(game,start+base+650);assert.equal(game.commit().ok,true);
@@ -199,7 +201,11 @@ function finishFifthSection(game){
     if(i===1){const bush=fifth.bushes.find(b=>!b.berries);game.resetEcho();walkTo(game,bush.homeX-110);assert.equal(game.commit().ok,true);jumpTo(game,bush.homeX+110);}
     if(i<2){runUntil(game,start+(i===0?1840:5400));jumpTo(game,start+(i===0?2110:5670));}
   }
-  runUntil(game,fifth.end);assert.equal(game.won,true);
+  runUntil(game,fifth.end);assert.equal(game.activeIndex,5);assert.equal(game.won,false);
+}
+function finishTreeSection(game){
+  const section=game.section;game.player.x=section.end;game.player.y=section.exit.y;game.player.grounded=true;game.update();
+  assert.equal(game.won,true);
 }
 test('the goose trail is playable using recorded bell decoys, raised cover, and both Echoes in the finale',()=>{finishFifthSection(new Adventure(4,{},()=>0));});
 
@@ -232,13 +238,19 @@ test('the flag escapes without a snare and cannot be bypassed at the old finish 
   game.resetEcho();frames(game,30);assert.equal(flag.caught,true);game.restartTake();assert.equal(flag.x,flag.homeX);assert.equal(flag.caught,false);assert.equal(flag.running,false);
 });
 
-test('all five sections form one playable continuous run',()=>{
+test('all six sections form one playable continuous run',()=>{
   const game=new Adventure(0,{},()=>0);
   for(let i=0;i<CHAPTERS.length;i++){
     finishCurrentSection(game);
     if(i<CHAPTERS.length-1){assert.equal(game.won,false);game.retireBehind(game.sections[i].end);}
   }
-  assert.equal(game.won,true);assert.deepEqual(game.completed,[0,1,2,3,4]);assert.equal(game.memory.completed,5);
+  assert.equal(game.won,true);assert.deepEqual(game.completed,[0,1,2,3,4,5]);assert.equal(game.memory.completed,6);
+});
+test('the hollow tree has alternating climb platforms and no log mechanic',()=>{
+  const game=new Adventure(5),section=game.section;
+  assert.equal(section.logPiles.length,0);assert.equal(section.tree.length,1);assert.equal(section.woodPlatforms.length,7);
+  for(const platform of section.woodPlatforms){assert.equal(platform.section,5);assert.equal(platform.h,14);}
+  assert.equal(section.ground[1].y,160);assert.equal(section.exit.y,160);
 });
 test('a big closed log pile cannot be bypassed with repeated jumps',()=>{
   const game=new Adventure(),pile=game.level.logPiles[0];game.player.x=pile.x-65;game.player.y=510;

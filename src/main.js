@@ -61,7 +61,7 @@ function finishRoom(){
   save.completed=[...new Set([...save.completed,...game.completed])];save.memory={...game.memory};save.lastRoom=game.activeIndex;persist();
   startedAt=performance.now();temporaryCue='';
   if(game.won){
-    clearInput();$('win-title').textContent='Caught you.';$('win-copy').textContent='Five connected trails, two little memories, and a very grumpy goose.';
+    clearInput();$('win-title').textContent='Caught you.';$('win-copy').textContent='Six connected trails, two little memories, and one very tall tree.';
     $('next-button').innerHTML='Wander from the beginning <span>→</span>';
     winTimer=setTimeout(()=>{if(game.won&&!isPaused())openDialog('win-dialog');},1000);
   }

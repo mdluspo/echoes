@@ -73,6 +73,8 @@ export class Illustrator{
   draw(game,time,dt,{motion=true,paused=false}={}){
     const c=this.c,l=game.level,t=motion?time:0,returning=game.dead&&game.deathBody.age>=.9,focus=returning?l.spawn:game.player,target=focus.x-this.viewWidth*.36+(returning?1:game.player.facing)*22;
     const cameraTarget=clamp(target,game.cameraFloor,Math.max(game.cameraFloor,l.width-this.viewWidth));
+    if(l.vertical){const verticalTarget=clamp(game.player.y-this.viewHeight*.62,-260,510-this.viewHeight*.78);this.cameraY=this.cameraReady?this.cameraY+(verticalTarget-this.cameraY)*(1-Math.exp(-(paused?0:dt)*5)):verticalTarget;}
+    else this.cameraY=510-this.viewHeight*.78;
     if(returning&&this.cameraReady){
       if(this.returnPan?.body!==game.deathBody)this.returnPan={body:game.deathBody,from:this.camera,start:game.deathBody.age};
       const progress=clamp((game.deathBody.age-this.returnPan.start)/.9,0,1),ease=progress*progress*(3-2*progress);
@@ -82,7 +84,7 @@ export class Illustrator{
     }
     this.cameraReady=true;game.view={left:this.camera,top:this.cameraY,right:this.camera+this.viewWidth,bottom:this.cameraY+this.viewHeight};game.updateSkyMessages(this.camera,this.viewWidth);game.retireBehind(this.camera);
     c.setTransform(this.dpr,0,0,this.dpr,0,0);c.fillStyle=WHITE;c.fillRect(0,0,this.width,this.height);c.save();c.scale(this.scale,this.scale);c.translate(-this.camera,-this.cameraY);
-    this.background(c,t);this.pits(c,l,t);
+    this.background(c,t);if(l.tree)for(const tree of l.tree)this.tree(c,tree,t);this.pits(c,l,t);
     for(const g of groundBanks(l))this.ground(c,g,l,t);
     if(l.index===0)this.instruction(c,"Echoes copy your last 3 seconds of actions.",1700,300);
     for(const bush of l.bushes)if(bush.x+150>this.camera&&bush.x-150<this.camera+this.viewWidth)this.bush(c,bush,t);
@@ -208,6 +210,12 @@ export class Illustrator{
     ink(c,q=>{q.rect(p.x,p.y,p.w,p.h);},{fill:WHITE,color:INK,width:2.2});
     line(c,[[p.x+8,p.y+4],[p.x+p.w-8,p.y+4]],INK,1);
     for(const x of [p.x+12,p.x+p.w-12])line(c,[[x,p.y+p.h],[x,p.y+p.h+12]],INK,1.5);
+  }
+  tree(c,t,time){
+    if(t.x+t.w<this.camera||t.x>this.camera+this.viewWidth)return;
+    ink(c,p=>{p.moveTo(t.x+80,t.y+t.h);p.lineTo(t.x+36,t.y+45);p.quadraticCurveTo(t.x+30,t.y,t.x+105,t.y);p.lineTo(t.x+t.w-105,t.y);p.quadraticCurveTo(t.x+t.w-30,t.y,t.x+t.w-36,t.y+45);p.lineTo(t.x+t.w-80,t.y+t.h);p.closePath();},{fill:WHITE,color:INK,width:3});
+    ink(c,p=>{p.moveTo(t.x+135,t.y+t.h);p.lineTo(t.x+110,t.y+80);p.quadraticCurveTo(t.x+105,t.y+38,t.x+150,t.y+30);p.lineTo(t.x+t.w-150,t.y+30);p.quadraticCurveTo(t.x+t.w-105,t.y+38,t.x+t.w-110,t.y+80);p.lineTo(t.x+t.w-135,t.y+t.h);p.closePath();},{fill:'#fafafa',color:INK,width:2});
+    for(let i=0;i<7;i++){const x=t.x+100+i*110;line(c,[[x,t.y+t.h-12],[x+20+Math.sin(time/900+i)*7,t.y+t.h-42]],INK,1.2);}
   }
   shed(c,s,l){
     for(const x of [s.x+10,s.x+s.w-10]){
