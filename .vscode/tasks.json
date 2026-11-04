@@ -13,7 +13,7 @@
 			"problemMatcher": []
 		},
 		{
-			"label": "Echoes: dungeon",
+			"label": "Echoes: preview (5175)",
 			"type": "shell",
 			"command": "npm",
 			"args": [

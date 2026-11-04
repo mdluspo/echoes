@@ -41,4 +41,8 @@ test('the production build is a complete static game without a server function',
   for (const name of ['hamster-idle.png', 'hamster-run.png', 'hamster-jump.png', 'bush-killer-sheet.png', 'meadow-sketch-v1.png']) {
     await access(new URL('src/assets/' + name, output));
   }
+  assert.deepEqual((await readdir(new URL('src/assets/', output))).sort(), [
+    'bush-killer-frames.js', 'bush-killer-sheet.png', 'fonts',
+    'hamster-idle.png', 'hamster-jump.png', 'hamster-run.png', 'meadow-sketch-v1.png',
+  ]);
 });
