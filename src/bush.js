@@ -3,7 +3,7 @@ export function decorateBushes(level){
   level.bushes=positions.map((x,i)=>({x:level.start+x,homeX:level.start+x,section:level.index,berries:true,variant:i,phase:'idle',age:0,open:0,reveal:0}));
   if(level.index===4){
     const homeX=level.plates.filter(plate=>plate.bell).at(-1).x-1250;
-    level.bushes.push({x:homeX,homeX,section:4,berries:false,variant:1,phase:'dormant',age:0,open:0,reveal:0,speed:150,minX:level.start+2050,maxX:level.end-80,activated:false,chaseDelay:0,grounded:true,vy:0,jumpCooldown:0});
+    level.bushes.push({x:homeX,homeX,section:4,berries:false,variant:1,phase:'dormant',age:0,open:0,reveal:0,speed:275,minX:level.start+2050,maxX:level.end-80,activated:false,chaseDelay:0,grounded:true,vy:0,jumpCooldown:0});
   }
   return level;
 }
@@ -59,7 +59,7 @@ export function stepBushes(bushes,actors,player,dt,surface){
       bush.open=Math.max(0,bush.open-dt*5);bush.reveal=bush.open;
       if(bush.open===0)bush.phase='dormant';continue;
     }
-    if(!bush.activated){if(player&&player.x>bush.x+60){bush.activated=true;bush.chaseDelay=3;}else{moveBush(bush,0,null,dt,surface);continue;}}
+    if(!bush.activated){if(player&&player.x>bush.x+60){bush.activated=true;bush.chaseDelay=.8;}else{moveBush(bush,0,null,dt,surface);continue;}}
     if(!player){moveBush(bush,0,null,dt,surface);continue;}
     if((bush.chaseDelay||0)>0){bush.chaseDelay=Math.max(0,bush.chaseDelay-dt);bush.phase='frozen';moveBush(bush,0,null,dt,surface);continue;}
     if(nearMouth(bush,player)){Object.assign(bush,{phase:'opening',age:0,facing:Math.sign(player.x-bush.x)||bush.facing||1});continue;}

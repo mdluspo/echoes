@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Adventure, createLevel, terrainY } from '../src/engine.js';
+import { stepBushes } from '../src/bush.js';
 
 const frames=(game,count,input={})=>{for(let i=0;i<count;i++)game.update(input);};
 const place=(game,x,facing=1)=>Object.assign(game.player,{x,y:terrainY(game.level,x),vx:0,vy:0,grounded:true,facing});
@@ -20,7 +21,7 @@ test('earlier trails establish safe bushes; the predator has room before the fin
 
 test('looking at the bush freezes it and looking away lets it close the distance',()=>{
   const {game,bush}=encounter(),home=bush.x;frames(game,25);assert.equal(bush.x,home);assert.equal(bush.phase,'frozen');
-  game.player.facing=-1;frames(game,220);assert.ok(bush.x<home-90);assert.notEqual(bush.phase,'frozen');
+  game.player.facing=-1;frames(game,50);assert.ok(bush.x<home-90);assert.notEqual(bush.phase,'frozen');
   game.player.x=bush.x-200;game.player.y=terrainY(game.level,game.player.x);game.player.facing=1;
   const x=bush.x;frames(game,20);assert.equal(bush.x,x);assert.equal(game.dead,false);
 });
@@ -42,13 +43,26 @@ test('an Echo watching the bush protects a player facing away; Vanish releases i
   const {game,bush}=encounter();game.player.facing=-1;
   game.echoes=[{id:1,slot:0,startTick:0,lifetime:1200,frames:[{...game.player,facing:1}]}];
   const x=bush.x;frames(game,30);assert.equal(bush.x,x);assert.equal(bush.phase,'frozen');
-  game.resetEcho();frames(game,185);assert.ok(bush.x<x);assert.equal(bush.phase,'stalking');
+  game.resetEcho();frames(game,45);assert.ok(bush.x<x);assert.equal(bush.phase,'stalking');
 });
 
 test('a recorded turn lets the bush move again even before its Echo expires',()=>{
   const {game,bush}=encounter(),home=bush.x;game.player.facing=-1;
   game.echoes=[{id:1,slot:0,startTick:0,lifetime:1200,frames:Array.from({length:30},(_,i)=>({...game.player,facing:i<12?1:-1}))}];
-  frames(game,10);assert.equal(bush.x,home);frames(game,240);assert.ok(bush.x<home);assert.equal(game.echoes.length,1);assert.equal(game.dead,false);
+  frames(game,10);assert.equal(bush.x,home);frames(game,70);assert.ok(bush.x<home);assert.equal(game.echoes.length,1);assert.equal(game.dead,false);
+});
+
+test('the bush creeps into view by the third bell but leaves room to set a watcher',()=>{
+  const level=createLevel(4),bush=level.bushes.find(b=>!b.berries),bell=level.plates.filter(p=>p.bell).at(-1);
+  const player={x:bush.x+70,y:510,facing:1},surface=()=>510,dt=1/60;
+  while(player.x<bell.x){player.x=Math.min(bell.x,player.x+285*dt);stepBushes([bush],[player],player,dt,surface);}
+  const gap=player.x-bush.x;
+  assert.ok(gap>180&&gap<360,`bush should be visible behind the player with time to use an Echo (gap ${gap})`);
+  assert.equal(bush.phase,'stalking');
+  const watcher={x:bush.x+180,y:510,facing:-1},heldX=bush.x;
+  for(let i=0;i<90;i++)stepBushes([bush],[player,watcher],player,dt,surface);
+  assert.equal(bush.x,heldX);
+  assert.equal(bush.phase,'frozen');
 });
 
 test('close contact reveals teeth, swallows the hamster and keeps chewing while the body disappears',()=>{
