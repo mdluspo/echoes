@@ -16,7 +16,7 @@ export const CHAPTERS = [
   { name:'The path remembers', region:'The Remembering Grove', limit:2 },
   { name:'Not so fast', region:'The Contrary Crossing', limit:2, length:6000, holdSeconds:16 },
   { name:'Mind the goose', region:'The Honking Meadow', limit:2, length:7940, holdSeconds:22 },
-  { name:'The Canopy', region:'The Hollow Tree', limit:2, length:4000 }
+  { name:'The Canopy', region:'The Hollow Tree', limit:2, length:1600 }
 ];
 const approach = (value, target, amount) => value < target ? Math.min(target, value + amount) : Math.max(target, value - amount);
 const overlaps = (a, b) => a.x + PHYSICS.width / 2 > b.x && a.x - PHYSICS.width / 2 < b.x + b.w && a.y > b.y && a.y - PHYSICS.height < b.y + b.h;
@@ -144,14 +144,11 @@ export function createLevel(index,memory={}){
   }
   if(index===5){
     const shift=items=>items.map(item=>({...item,x:item.x+start,section:index}));
-    return decorateBushes({...CHAPTERS[index],index,start,end,width:end,vertical:true,spawn:{x:start+120,y:510},
-      ground:shift([{x:0,y:510,w:760,h:700},{x:1240,y:160,w:2760,h:700}]),mounds:[],terraces:[],holes:[],thorns:[],seeds:[],bridges:[],sheds:[],logPiles:[],plates:[],fences:[],geese:[],
-      tree:shift([{x:180,y:70,w:850,h:450}]),woodPlatforms:shift([
-        {x:300,y:440,w:170,h:14,kind:'wood'},{x:570,y:370,w:170,h:14,kind:'wood'},
-        {x:330,y:300,w:170,h:14,kind:'wood'},{x:600,y:230,w:170,h:14,kind:'wood'},
-        {x:390,y:160,w:190,h:14,kind:'wood'},{x:760,y:245,w:170,h:14,kind:'wood'},
-        {x:980,y:195,w:190,h:14,kind:'wood'}
-      ]),checkpoint:{x:start+2100,y:160},exit:{x:end,y:160},trap:{enabled:false,chance:0,speed:1800,windup:.5,shots:0,waves:0},retired:false});
+    return decorateBushes({...CHAPTERS[index],index,start,end,width:end,vertical:true,cameraTop:-1040,inProgress:true,spawn:{x:start+120,y:510},
+      ground:shift([{x:0,y:510,w:1900,h:700}]),mounds:[],terraces:[],holes:[],thorns:[],seeds:[],bridges:[],sheds:[],logPiles:[],plates:[],fences:[],geese:[],
+      tree:shift([{x:180,y:-850,w:850,h:1360}]),woodPlatforms:shift(Array.from({length:13},(_,i)=>({
+        x:i%2?510-i*2:250+i*2,y:410-i*100,w:160,h:14,kind:'tree',side:i%2?'right':'left'
+      }))),checkpoint:null,exit:{x:end,y:510},trap:{enabled:false,chance:0,speed:1800,windup:.5,shots:0,waves:0},retired:false});
   }
   // Button-topped opening ledges end directly at the first gap; there is no
   // small walkable shelf on their right-hand side.
@@ -250,7 +247,7 @@ export class Adventure {
     for(const key of ['ground','mounds','plates','logPiles','thorns','seeds','terraces','holes','bridges','sheds','geese','fences','bushes','platforms','woodPlatforms','tree'])this.level[key]=this.sections.filter(s=>!s.retired).flatMap(s=>s[key]||[]);
     this.level.ground=this.level.ground.reduce((banks,bank)=>{const last=banks.at(-1);if(last&&last.x+last.w===bank.x&&last.y===bank.y)last.w+=bank.w;else banks.push({...bank});return banks;},[]);
     for(const bush of this.level.bushes)if(!Number.isFinite(bush.y))bush.y=terrainY(this.level,bush.x)??510;
-    Object.assign(this.level,{index:this.activeIndex,region:this.section.region,limit:this.section.limit,spawn:this.section.spawn,exit:this.sections.at(-1).exit});
+    Object.assign(this.level,{index:this.activeIndex,region:this.section.region,limit:this.section.limit,spawn:this.section.spawn,exit:this.sections.at(-1).exit,vertical:Boolean(this.section.vertical),cameraTop:this.section.cameraTop});
     for(const pile of this.level.logPiles)if(!this.logStacks.has(pile.x))this.logStacks.set(pile.x,new LogStack(pile,x=>terrainY(this.level,x)));
     for(const key of this.logStacks.keys())if(!this.level.logPiles.some(p=>p.x===key))this.logStacks.delete(key);
   }
@@ -529,7 +526,7 @@ export class Adventure {
         else if(flag.x>=flag.maxX){flag.x=flag.maxX;flag.direction=-1;}else if(flag.x<=flag.minX){flag.x=flag.minX;flag.direction=1;}
       }
       if(flag.caught&&Math.abs(p.x-flag.x)<50&&Math.abs(p.y-flag.y)<65)this.finishSection(events);
-    }else if(p.x>=this.section.end&&p.y<560)this.finishSection(events);
+    }else if(!this.section.inProgress&&p.x>=this.section.end&&p.y<560)this.finishSection(events);
     return events;
   }
 }

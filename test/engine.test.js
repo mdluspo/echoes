@@ -238,19 +238,37 @@ test('the flag escapes without a snare and cannot be bypassed at the old finish 
   game.resetEcho();frames(game,30);assert.equal(flag.caught,true);game.restartTake();assert.equal(flag.x,flag.homeX);assert.equal(flag.caught,false);assert.equal(flag.running,false);
 });
 
-test('all six sections form one playable continuous run',()=>{
+test('the five finished sections lead continuously into the unfinished tree',()=>{
   const game=new Adventure(0,{},()=>0);
-  for(let i=0;i<CHAPTERS.length;i++){
+  for(let i=0;i<CHAPTERS.length-1;i++){
     finishCurrentSection(game);
-    if(i<CHAPTERS.length-1){assert.equal(game.won,false);game.retireBehind(game.sections[i].end);}
+    assert.equal(game.won,false);game.retireBehind(game.sections[i].end);
   }
-  assert.equal(game.won,true);assert.deepEqual(game.completed,[0,1,2,3,4,5]);assert.equal(game.memory.completed,6);
+  assert.equal(game.activeIndex,5);assert.deepEqual(game.completed,[0,1,2,3,4]);assert.equal(game.memory.completed,5);
+  game.player.x=game.section.end;game.update();assert.equal(game.won,false);
 });
 test('the hollow tree has alternating climb platforms and no log mechanic',()=>{
   const game=new Adventure(5),section=game.section;
-  assert.equal(section.logPiles.length,0);assert.equal(section.tree.length,1);assert.equal(section.woodPlatforms.length,7);
+  assert.equal(section.logPiles.length,0);assert.equal(section.tree.length,1);assert.equal(section.woodPlatforms.length,13);
   for(const platform of section.woodPlatforms){assert.equal(platform.section,5);assert.equal(platform.h,14);}
-  assert.equal(section.ground[1].y,160);assert.equal(section.exit.y,160);
+  assert.equal(section.ground.length,1);assert.equal(section.ground[0].y,510);
+  assert.equal(game.level.vertical,true);assert.ok(section.tree[0].h>1200);assert.equal(section.inProgress,true);
+  for(const key of ['plates','geese','fences','bushes','bridges','holes'])assert.deepEqual(section[key],[]);
+});
+
+test('every tree ledge is reachable by jumping from the previous ledge',()=>{
+  const game=new Adventure(5),platforms=game.section.woodPlatforms;
+  walkTo(game,platforms[0].x-30);
+  for(const [i,platform] of platforms.entries()){
+    if(i){
+      const previous=platforms[i-1],towardRight=platform.x>previous.x;
+      walkTo(game,towardRight?previous.x+previous.w-20:previous.x+20);
+    }
+    const target=platform.x>game.player.x?platform.x+25:platform.x+platform.w-25;
+    jumpTo(game,target);
+    assert.equal(game.player.y,platform.y,`Ledge ${i+1} must be reachable`);
+  }
+  assert.equal(game.won,false);assert.equal(game.dead,false);assert.ok(game.player.y< -700);
 });
 test('a big closed log pile cannot be bypassed with repeated jumps',()=>{
   const game=new Adventure(),pile=game.level.logPiles[0];game.player.x=pile.x-65;game.player.y=510;

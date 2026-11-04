@@ -73,7 +73,7 @@ export class Illustrator{
   draw(game,time,dt,{motion=true,paused=false}={}){
     const c=this.c,l=game.level,t=motion?time:0,returning=game.dead&&game.deathBody.age>=.9,focus=returning?l.spawn:game.player,target=focus.x-this.viewWidth*.36+(returning?1:game.player.facing)*22;
     const cameraTarget=clamp(target,game.cameraFloor,Math.max(game.cameraFloor,l.width-this.viewWidth));
-    if(l.vertical){const verticalTarget=clamp(game.player.y-this.viewHeight*.62,-260,510-this.viewHeight*.78);this.cameraY=this.cameraReady?this.cameraY+(verticalTarget-this.cameraY)*(1-Math.exp(-(paused?0:dt)*5)):verticalTarget;}
+    if(l.vertical){const verticalTarget=clamp(focus.y-this.viewHeight*.62,l.cameraTop??-260,510-this.viewHeight*.78);this.cameraY=this.cameraReady?this.cameraY+(verticalTarget-this.cameraY)*(1-Math.exp(-(paused?0:dt)*5)):verticalTarget;}
     else this.cameraY=510-this.viewHeight*.78;
     if(returning&&this.cameraReady){
       if(this.returnPan?.body!==game.deathBody)this.returnPan={body:game.deathBody,from:this.camera,start:game.deathBody.age};
@@ -104,7 +104,7 @@ export class Illustrator{
     }
     for(const log of game.projectiles)this.log(c,log);
     for(const attack of game.attacks){const x=attack.pile.x+attack.pile.w/2,y=attack.pile.y-18;line(c,[[x-12,y-5],[x-20,y-17]],INK,2);line(c,[[x,y-9],[x,y-24]],INK,2);line(c,[[x+12,y-5],[x+20,y-17]],INK,2);}
-    for(const section of l.sections)if(!section.retired){if(section.exit.runaway)this.snare(c,section.exit,game.pressed(section.exit.requires));this.exit(c,section.exit,section.index<game.activeIndex||game.won,t);}
+    for(const section of l.sections)if(!section.retired&&!section.inProgress){if(section.exit.runaway)this.snare(c,section.exit,game.pressed(section.exit.requires));this.exit(c,section.exit,section.index<game.activeIndex||game.won,t);}
     for(const p of l.plates)this.plate(c,p,game.pressed(p.id),l.index===0&&p.id==='A');
     for(const goose of l.geese)if(goose.x+90>this.camera&&goose.x-90<this.camera+this.viewWidth)this.goose(c,goose,t);
     for(const echo of game.echoes){
@@ -207,15 +207,46 @@ export class Illustrator{
   }
   woodPlatform(c,p){
     if(p.x+p.w<this.camera||p.x>this.camera+this.viewWidth)return;
+    if(p.kind==='tree'){
+      ink(c,q=>{q.moveTo(p.x,p.y);q.lineTo(p.x+p.w*.38,p.y);q.lineTo(p.x+p.w*.75,p.y+1);q.lineTo(p.x+p.w,p.y);q.lineTo(p.x+p.w-1,p.y+p.h);q.lineTo(p.x+p.w*.64,p.y+p.h-1);q.lineTo(p.x+2,p.y+p.h);q.closePath();},{fill:WHITE,width:2.2});
+      return;
+    }
     ink(c,q=>{q.rect(p.x,p.y,p.w,p.h);},{fill:WHITE,color:INK,width:2.2});
     line(c,[[p.x+8,p.y+4],[p.x+p.w-8,p.y+4]],INK,1);
     for(const x of [p.x+12,p.x+p.w-12])line(c,[[x,p.y+p.h],[x,p.y+p.h+12]],INK,1.5);
   }
   tree(c,t,time){
     if(t.x+t.w<this.camera||t.x>this.camera+this.viewWidth)return;
-    ink(c,p=>{p.moveTo(t.x+80,t.y+t.h);p.lineTo(t.x+36,t.y+45);p.quadraticCurveTo(t.x+30,t.y,t.x+105,t.y);p.lineTo(t.x+t.w-105,t.y);p.quadraticCurveTo(t.x+t.w-30,t.y,t.x+t.w-36,t.y+45);p.lineTo(t.x+t.w-80,t.y+t.h);p.closePath();},{fill:WHITE,color:INK,width:3});
-    ink(c,p=>{p.moveTo(t.x+135,t.y+t.h);p.lineTo(t.x+110,t.y+80);p.quadraticCurveTo(t.x+105,t.y+38,t.x+150,t.y+30);p.lineTo(t.x+t.w-150,t.y+30);p.quadraticCurveTo(t.x+t.w-105,t.y+38,t.x+t.w-110,t.y+80);p.lineTo(t.x+t.w-135,t.y+t.h);p.closePath();},{fill:'#fafafa',color:INK,width:2});
-    for(let i=0;i<7;i++){const x=t.x+100+i*110;line(c,[[x,t.y+t.h-12],[x+20+Math.sin(time/900+i)*7,t.y+t.h-42]],INK,1.2);}
+    c.save();c.translate(t.x,t.y);c.scale(t.w/850,t.h/1360);
+    // Two open trunk edges and one sweeping branch, following the supplied sketch.
+    // The white interior is left clear for the alternating climbing ledges.
+    ink(c,p=>{
+      p.moveTo(40,1360);p.lineTo(52,1215);p.lineTo(57,1100);p.quadraticCurveTo(66,990,88,905);
+      p.lineTo(102,800);p.quadraticCurveTo(108,715,99,650);p.lineTo(88,540);
+      p.quadraticCurveTo(74,425,83,315);p.lineTo(87,192);p.lineTo(100,75);p.lineTo(99,12);
+    },{width:2.8});
+    ink(c,p=>{
+      p.moveTo(500,1360);p.lineTo(486,1255);p.lineTo(465,1148);p.quadraticCurveTo(458,1070,450,1000);
+      p.lineTo(433,890);p.lineTo(424,780);p.quadraticCurveTo(412,690,419,592);
+      p.lineTo(427,470);p.lineTo(423,355);p.quadraticCurveTo(418,220,431,100);p.lineTo(438,0);
+    },{width:2.8});
+    ink(c,p=>{
+      p.moveTo(420,675);p.quadraticCurveTo(452,587,504,562);p.quadraticCurveTo(557,550,595,490);
+      p.moveTo(439,685);p.quadraticCurveTo(450,620,508,609);p.quadraticCurveTo(575,594,635,513);
+      p.quadraticCurveTo(689,493,712,458);
+    },{width:2.6});
+    ink(c,p=>{
+      p.moveTo(501,500);p.quadraticCurveTo(490,449,495,408);p.lineTo(514,390);p.lineTo(540,390);
+      p.quadraticCurveTo(578,360,606,338);p.quadraticCurveTo(613,292,654,265);
+      p.quadraticCurveTo(680,235,713,236);p.lineTo(749,237);p.quadraticCurveTo(797,250,835,283);
+      p.lineTo(889,328);p.quadraticCurveTo(899,337,902,320);p.quadraticCurveTo(910,268,920,276);
+      p.quadraticCurveTo(933,333,905,359);p.quadraticCurveTo(886,376,859,360);
+      p.quadraticCurveTo(874,392,867,441);p.quadraticCurveTo(864,463,837,464);
+      p.quadraticCurveTo(772,465,721,452);p.quadraticCurveTo(675,439,633,439);p.lineTo(599,439);
+      p.moveTo(646,444);p.quadraticCurveTo(591,504,514,532);
+    },{width:2.6});
+    c.restore();
+    this.instruction(c,'Work in progress',t.x+285,t.y-48,25);
   }
   shed(c,s,l){
     for(const x of [s.x+10,s.x+s.w-10]){

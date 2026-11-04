@@ -79,7 +79,7 @@ function renderUI(){
   $('echo-button').disabled=game.won||game.dead||game.echoRecording.length<12||activeEchoes>=level.limit||!game.player.grounded;
   $('echo-button').classList.toggle('ready',activeEchoes<level.limit&&!game.dead&&!game.won);
   const seconds=(performance.now()-startedAt)/1000;
-  const cue=performance.now()<cueUntil?temporaryCue:onPlate&&activeEchoes<level.limit?(touchLayout()?'Tap Echo here.':'E: leave an Echo here.'):game.won?'A path, discovered.':seconds<8?(level.index===0?(touchLayout()?'Hold ← → to scurry · ↑ to jump':'← → to scurry · Space to jump'):'Find the striped plate. Leave an Echo.') : '';
+  const cue=performance.now()<cueUntil?temporaryCue:onPlate&&activeEchoes<level.limit?(touchLayout()?'Tap Echo here.':'E: leave an Echo here.'):game.won?'A path, discovered.':seconds<8?(game.section.inProgress?'Jump up the tree.':level.index===0?(touchLayout()?'Hold ← → to scurry · ↑ to jump':'← → to scurry · Space to jump'):'Find the striped plate. Leave an Echo.') : '';
   $('cue').textContent=cue;$('cue').classList.toggle('quiet',!cue);
   $('sound-button').setAttribute('aria-pressed',String(save.sound));$('sound-button').querySelector('span').textContent=save.sound?'on':'off';
   let unlocked=0;while(unlocked<CHAPTERS.length-1&&save.completed.includes(unlocked))unlocked++;

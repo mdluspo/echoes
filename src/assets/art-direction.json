@@ -128,5 +128,11 @@
       "integration": "Movement advances through the supplied top row by traveled distance. Idle, dormant and watched bushes use the first top-row drawing. Opening selects the first five attack poses, swallowing holds the huge gape, then plays the supplied gulp and closing drawings. The attack faces the nearby hamster. A clipped redraw of the same supplied mouth pixels forms the foreground during swallowing; no generated teeth are added."
     }
   },
-  "help": "The question-mark dialog contains controls only, followed by collapsed, numbered Hint 1 / Hint 2 / Hint 3 entries for new mechanics in the current trail. Hints follow introduction order: Echo plates; aimed logs; collapsing retreat; linked bridges, homing logs with shed, runaway flag; bells with geese, sliding grassy cover, predator bush. No future-level mechanics or automatic full walkthrough."
+  "hollow_tree": {
+    "reference": "User's November 4 sketch: tall open trunk, alternating inward rectangular ledges, one large sweeping right branch with a sparse irregular outline.",
+    "renderer": "src/art.js tree and woodPlatform; existing canvas ink drawing system",
+    "height": 1360,
+    "behavior": "The sixth trail contains only the tree and thirteen safe ledges spaced 100 pixels vertically. Camera follows the full climb. No switches, enemies, extra puzzles or finish flag. Work in progress appears above the top; reaching it does not show a completed-game dialog."
+  },
+  "help": "The question-mark dialog contains controls only, followed by collapsed, numbered Hint 1 / Hint 2 / Hint 3 entries for new mechanics in the current trail. Hints follow introduction order: Echo plates; aimed logs; collapsing retreat; linked bridges, homing logs with shed, runaway flag; bells with geese, sliding grassy cover, predator bush. The unfinished sixth trail only describes climbing the tree. No future-level mechanics or automatic full walkthrough."
 }

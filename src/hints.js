@@ -20,7 +20,7 @@ export const TRAIL_HINTS = [
     'A berryless bush waits before the creek leading to the third bell and wakes after you pass it. It follows you and can jump. Leave an Echo facing it before crossing the creek, then use your other Echo for the final bell. Keep clear of its mouth even while watching.'
   ],
   [
-    'The hollow tree is the first vertical trail. Jump between the branches on opposite sides of the trunk, then climb out into the canopy.',
-    'The branches are safe platforms, but the ground is far below. If you miss, use the lower branches to try again.'
+    'Jump between the ledges on opposite sides of the trunk to climb the tree.',
+    'Work in progress. The climb ends at the message at the top.'
   ]
 ];
