@@ -217,7 +217,7 @@ export class Illustrator{
   }
   tree(c,t,time){
     if(t.x+t.w<this.camera||t.x>this.camera+this.viewWidth)return;
-    c.save();c.translate(t.x,t.y);c.scale(t.w/850,t.h/1360);
+    c.save();c.translate(t.x,t.y);c.scale(t.w/1700,t.h/1360);
     // Two open trunk edges and one sweeping branch, following the supplied sketch.
     // The white interior is left clear for the alternating climbing ledges.
     ink(c,p=>{
@@ -245,8 +245,24 @@ export class Illustrator{
       p.quadraticCurveTo(772,465,721,452);p.quadraticCurveTo(675,439,633,439);p.lineTo(599,439);
       p.moveTo(646,444);p.quadraticCurveTo(591,504,514,532);
     },{width:2.6});
+    // Mirror the crown and branch so the enlarged tree has the same hand-drawn
+    // silhouette on both sides of the hollow.
+    c.save();c.translate(850,0);c.scale(-1,1);
+    ink(c,p=>{
+      p.moveTo(420,675);p.quadraticCurveTo(452,587,504,562);p.quadraticCurveTo(557,550,595,490);
+      p.moveTo(439,685);p.quadraticCurveTo(450,620,508,609);p.quadraticCurveTo(575,594,635,513);
+      p.quadraticCurveTo(689,493,712,458);
+      p.moveTo(501,500);p.quadraticCurveTo(490,449,495,408);p.lineTo(514,390);p.lineTo(540,390);
+      p.quadraticCurveTo(578,360,606,338);p.quadraticCurveTo(613,292,654,265);
+      p.quadraticCurveTo(680,235,713,236);p.lineTo(749,237);p.quadraticCurveTo(797,250,835,283);
+      p.lineTo(889,328);p.quadraticCurveTo(899,337,902,320);p.quadraticCurveTo(910,268,920,276);
+      p.quadraticCurveTo(933,333,905,359);p.quadraticCurveTo(886,376,859,360);
+      p.quadraticCurveTo(874,392,867,441);p.quadraticCurveTo(864,463,837,464);
+      p.quadraticCurveTo(772,465,721,452);p.quadraticCurveTo(675,439,633,439);p.lineTo(599,439);
+    },{width:2.6});
     c.restore();
-    this.instruction(c,'Work in progress',t.x+285,t.y-48,25);
+    c.restore();
+    this.instruction(c,'Work in progress',t.x+700,t.y-48,25);
   }
   shed(c,s,l){
     for(const x of [s.x+10,s.x+s.w-10]){
