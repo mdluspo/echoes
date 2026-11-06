@@ -146,8 +146,8 @@ export function createLevel(index,memory={}){
     const shift=items=>items.map(item=>({...item,x:item.x+start,section:index}));
     return decorateBushes({...CHAPTERS[index],index,start,end,width:end,vertical:true,cameraTop:-1040,inProgress:true,spawn:{x:start+120,y:510},
       ground:shift([{x:0,y:510,w:1900,h:700}]),mounds:[],terraces:[],holes:[],thorns:[],seeds:[],bridges:[],sheds:[],logPiles:[],plates:[],fences:[],geese:[],
-      tree:shift([{x:180,y:-850,w:1700,h:1360}]),woodPlatforms:shift(Array.from({length:13},(_,i)=>({
-        x:i===12?820:(i%2?600:300),y:410-i*100,w:i===12?800:210,h:14,kind:'tree',side:i%2?'right':'left'
+      tree:shift([{x:180,y:-850,w:1200,h:1360}]),woodPlatforms:shift(Array.from({length:13},(_,i)=>({
+        x:i===12?820:(i%2?600:300),y:410-i*100,w:i===12?350:210,h:14,kind:'leaf',side:i%2?'right':'left'
       }))),checkpoint:null,exit:{x:end,y:510},trap:{enabled:false,chance:0,speed:1800,windup:.5,shots:0,waves:0},retired:false});
   }
   // Button-topped opening ledges end directly at the first gap; there is no

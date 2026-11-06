@@ -207,6 +207,16 @@ export class Illustrator{
   }
   woodPlatform(c,p){
     if(p.x+p.w<this.camera||p.x>this.camera+this.viewWidth)return;
+    if(p.kind==='leaf'){
+      ink(c,q=>{
+        q.moveTo(p.x,p.y+p.h*.55);q.quadraticCurveTo(p.x+p.w*.2,p.y-7,p.x+p.w,p.y+p.h*.5);
+        q.quadraticCurveTo(p.x+p.w*.72,p.y+p.h+6,p.x,p.y+p.h*.55);q.closePath();
+      },{fill:WHITE,width:2.2});
+      line(c,[[p.x+3,p.y+p.h*.55],[p.x+p.w-3,p.y+p.h*.5]],INK,1);
+      line(c,[[p.x+p.w*.35,p.y+p.h*.53],[p.x+p.w*.26,p.y+p.h*.2]],INK,.7);
+      line(c,[[p.x+p.w*.58,p.y+p.h*.51],[p.x+p.w*.62,p.y+p.h*.18]],INK,.7);
+      return;
+    }
     if(p.kind==='tree'){
       ink(c,q=>{q.moveTo(p.x,p.y);q.lineTo(p.x+p.w*.38,p.y);q.lineTo(p.x+p.w*.75,p.y+1);q.lineTo(p.x+p.w,p.y);q.lineTo(p.x+p.w-1,p.y+p.h);q.lineTo(p.x+p.w*.64,p.y+p.h-1);q.lineTo(p.x+2,p.y+p.h);q.closePath();},{fill:WHITE,width:2.2});
       return;
@@ -217,7 +227,7 @@ export class Illustrator{
   }
   tree(c,t,time){
     if(t.x+t.w<this.camera||t.x>this.camera+this.viewWidth)return;
-    c.save();c.translate(t.x,t.y);c.scale(t.w/1700,t.h/1360);
+    c.save();c.translate(t.x,t.y);c.scale(t.w/850,t.h/1360);
     // Two open trunk edges and one sweeping branch, following the supplied sketch.
     // The white interior is left clear for the alternating climbing ledges.
     ink(c,p=>{
@@ -230,37 +240,42 @@ export class Illustrator{
       p.lineTo(433,890);p.lineTo(424,780);p.quadraticCurveTo(412,690,419,592);
       p.lineTo(427,470);p.lineTo(423,355);p.quadraticCurveTo(418,220,431,100);p.lineTo(438,0);
     },{width:2.8});
+    // Uneven branches fork naturally from the upper trunk instead of copying
+    // one exaggerated side branch onto the other side.
     ink(c,p=>{
-      p.moveTo(420,675);p.quadraticCurveTo(452,587,504,562);p.quadraticCurveTo(557,550,595,490);
-      p.moveTo(439,685);p.quadraticCurveTo(450,620,508,609);p.quadraticCurveTo(575,594,635,513);
-      p.quadraticCurveTo(689,493,712,458);
+      p.moveTo(285,560);p.quadraticCurveTo(260,455,225,370);p.quadraticCurveTo(180,285,88,225);
+      p.moveTo(315,470);p.quadraticCurveTo(290,390,235,330);p.quadraticCurveTo(170,275,118,275);
+      p.moveTo(520,520);p.quadraticCurveTo(560,430,615,350);p.quadraticCurveTo(690,275,785,230);
+      p.moveTo(555,455);p.quadraticCurveTo(600,385,670,345);p.quadraticCurveTo(750,315,820,315);
+      p.moveTo(405,350);p.quadraticCurveTo(405,260,430,185);p.quadraticCurveTo(455,115,500,70);
     },{width:2.6});
+    // Real leaf clusters sit above the split trunk. They are mirrored with the
+    // trunk so the canopy reads as a full treetop instead of a single branch.
+    const leaves=()=>{
+      const cluster=(x,y,s)=>{
+        ink(c,q=>{
+          q.moveTo(x-s,y);q.quadraticCurveTo(x-s*.35,y-s*.62,x+s*.25,y-s*.4);
+          q.quadraticCurveTo(x+s*.82,y-s*.2,x+s,y);q.quadraticCurveTo(x+s*.55,y+s*.48,x-s*.1,y+s*.52);
+          q.quadraticCurveTo(x-s*.7,y+s*.34,x-s,y);q.closePath();
+        },{fill:WHITE,width:2});
+        line(c,[[x-s*.82,y+s*.04],[x+s*.78,y-s*.02]],INK,1);
+        for(const d of [-.45,0,.45])line(c,[[x+d*s,y],[x+d*s*.62,y-s*.22]],INK,.7);
+      };
+      cluster(155,105,72);cluster(285,55,86);cluster(420,105,94);cluster(560,52,84);cluster(700,112,78);
+      cluster(230,205,66);cluster(385,180,82);cluster(545,205,70);cluster(675,185,62);
+      cluster(425,-85,145);cluster(205,-35,92);cluster(650,-30,98);
+    };
+    leaves();
+    c.save();c.translate(850,0);c.scale(-1,1);leaves();c.restore();
+    // A second copy of the sketch rises above the first one, turned upside
+    // down so the two trunk sections meet at the canopy instead of ending in
+    // a flat artificial cap.
     ink(c,p=>{
-      p.moveTo(501,500);p.quadraticCurveTo(490,449,495,408);p.lineTo(514,390);p.lineTo(540,390);
-      p.quadraticCurveTo(578,360,606,338);p.quadraticCurveTo(613,292,654,265);
-      p.quadraticCurveTo(680,235,713,236);p.lineTo(749,237);p.quadraticCurveTo(797,250,835,283);
-      p.lineTo(889,328);p.quadraticCurveTo(899,337,902,320);p.quadraticCurveTo(910,268,920,276);
-      p.quadraticCurveTo(933,333,905,359);p.quadraticCurveTo(886,376,859,360);
-      p.quadraticCurveTo(874,392,867,441);p.quadraticCurveTo(864,463,837,464);
-      p.quadraticCurveTo(772,465,721,452);p.quadraticCurveTo(675,439,633,439);p.lineTo(599,439);
-      p.moveTo(646,444);p.quadraticCurveTo(591,504,514,532);
+      p.moveTo(425,90);p.quadraticCurveTo(425,10,405,-75);p.quadraticCurveTo(385,-145,330,-205);
+      p.moveTo(425,80);p.quadraticCurveTo(430,0,465,-70);p.quadraticCurveTo(505,-140,565,-195);
+      p.moveTo(350,-150);p.quadraticCurveTo(275,-210,190,-220);p.quadraticCurveTo(120,-225,62,-185);
+      p.moveTo(500,-145);p.quadraticCurveTo(590,-205,675,-205);p.quadraticCurveTo(750,-200,820,-155);
     },{width:2.6});
-    // Mirror the crown and branch so the enlarged tree has the same hand-drawn
-    // silhouette on both sides of the hollow.
-    c.save();c.translate(850,0);c.scale(-1,1);
-    ink(c,p=>{
-      p.moveTo(420,675);p.quadraticCurveTo(452,587,504,562);p.quadraticCurveTo(557,550,595,490);
-      p.moveTo(439,685);p.quadraticCurveTo(450,620,508,609);p.quadraticCurveTo(575,594,635,513);
-      p.quadraticCurveTo(689,493,712,458);
-      p.moveTo(501,500);p.quadraticCurveTo(490,449,495,408);p.lineTo(514,390);p.lineTo(540,390);
-      p.quadraticCurveTo(578,360,606,338);p.quadraticCurveTo(613,292,654,265);
-      p.quadraticCurveTo(680,235,713,236);p.lineTo(749,237);p.quadraticCurveTo(797,250,835,283);
-      p.lineTo(889,328);p.quadraticCurveTo(899,337,902,320);p.quadraticCurveTo(910,268,920,276);
-      p.quadraticCurveTo(933,333,905,359);p.quadraticCurveTo(886,376,859,360);
-      p.quadraticCurveTo(874,392,867,441);p.quadraticCurveTo(864,463,837,464);
-      p.quadraticCurveTo(772,465,721,452);p.quadraticCurveTo(675,439,633,439);p.lineTo(599,439);
-    },{width:2.6});
-    c.restore();
     c.restore();
     this.instruction(c,'Work in progress',t.x+700,t.y-48,25);
   }
